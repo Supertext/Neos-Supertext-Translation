@@ -5,11 +5,13 @@
  * Texts listed in sample-<lang>.json (e.g. sample-fr.json, keyed by the English
  * source) come back translated. Anything else comes back unchanged, or prefixed
  * with "[<target_lang>] " when STAND_IN_PREFIX=1, which makes untranslated text
- * easy to spot in tests. Listens on :8765 (PORT), accepts any API key.
+ * easy to spot in tests. STAND_IN_DUMP=<dir> writes each submitted document's
+ * untranslated segments to <dir>/<target_lang>.json (to extend the samples).
+ * Listens on :8765 (PORT), accepts any API key.
  */
 import http from 'node:http';
 import { randomBytes } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 
 const norm = (s) => s.replace(/&apos;|&#39;/g, "'").replace(/&nbsp;/g, ' ').replace(/<br\s*\/?>/g, '<br>').replace(/\s+/g, ' ').trim();
 const samples = new Map();
@@ -49,6 +51,11 @@ http
     if (match[2] === '/status') return send(200, { status: 'done' });
     const { html, lang } = files.get(match[1]);
     const sample = sampleFor(lang);
+    if (process.env.STAND_IN_DUMP) {
+      const missing = {};
+      for (const [, inner] of html.matchAll(/<div data-st-id="\d+">([\s\S]*?)<\/div>\n/g)) if (!sample.has(norm(inner))) missing[inner] = '';
+      writeFileSync(`${process.env.STAND_IN_DUMP}/${lang}.json`, JSON.stringify(missing, null, 1));
+    }
     const out = html.replace(/(<div data-st-id="\d+">)([\s\S]*?)(<\/div>\n)/g, (all, open, inner, close) => {
       const translated = sample.get(norm(inner));
       if (translated !== undefined) return open + translated + close;
