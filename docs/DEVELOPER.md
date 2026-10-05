@@ -95,7 +95,7 @@ When the flow touches new texts, run the stand-in with `STAND_IN_DUMP=<dir>`: it
 
 ## Demo (Railway)
 
-The public demo is a container built from `demo/Dockerfile`: Neos 9.1 with the official **Neos.Demo** site (English, with English UK as a variant, and German) plus **French and Italian, empty**, as Supertext targets, and this package installed from the repo itself. It runs on Railway in the `supertext-cms-demos` project (service `neos`, region EU West / Amsterdam) next to a MySQL service.
+The public demo is a container built from `demo/Dockerfile`: Neos 9.1 with the official **Neos.Demo** site (English, with English UK as a variant, and German) plus **French and Italian, empty**, as Supertext targets, and this package installed from the repo itself. It runs on Railway in the `supertext-cms-demos` project (service `neos`, region EU West / Amsterdam) next to a `MySQL` service (Railway's MySQL 9 template, moved to Amsterdam, InnoDB buffer pool lowered to 256 MB in its start command): <https://neos-production-7b3c.up.railway.app/> (backend: `/neos`). Italian and French URLs (`/it`, `/fr`) return 404 until an editor has translated the first page into that language.
 
 **Deploys:** Railway watches `main` and rebuilds on every push.
 
