@@ -1,0 +1,11 @@
+# Adds new language dimension values (French, Italian) to the root node, so pages
+# can be created in them. Run after importing the site:
+#   ./flow nodemigration:execute 20261005150000
+comments: 'Extend the root node to all configured language dimension values (adds French and Italian)'
+migration:
+  -
+    transformations:
+      -
+        type: 'UpdateRootNodeAggregateDimensions'
+        settings:
+          nodeType: 'Neos.Neos:Sites'

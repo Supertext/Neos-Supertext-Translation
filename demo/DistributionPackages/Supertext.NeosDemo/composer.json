@@ -1,0 +1,12 @@
+{
+    "name": "supertext/neos-demo",
+    "type": "neos-package",
+    "description": "Supertext Neos demo: Neos.Demo with French and Italian as target languages. Demo only.",
+    "license": "GPL-3.0-or-later",
+    "require": {
+        "neos/demo": "^9.0",
+        "supertext/neos-translation": "*"
+    },
+    "autoload": { "psr-4": { "Supertext\\NeosDemo\\": "Classes/" } },
+    "extra": { "neos": { "package-key": "Supertext.NeosDemo" } }
+}

@@ -1,0 +1,23 @@
+{
+    "name": "supertext/neos-translation",
+    "type": "neos-package",
+    "description": "Supertext AI translation for Neos: translates content automatically when editors create a page or content element in another language.",
+    "license": "GPL-3.0-or-later",
+    "homepage": "https://www.supertext.com",
+    "authors": [
+        { "name": "Supertext AG", "homepage": "https://www.supertext.com" }
+    ],
+    "require": {
+        "php": "^8.2",
+        "ext-dom": "*",
+        "neos/neos": "^9.0",
+        "neos/contentrepository-core": "^9.0",
+        "guzzlehttp/guzzle": "^7.4"
+    },
+    "autoload": {
+        "psr-4": { "Supertext\\NeosTranslation\\": "Classes/" }
+    },
+    "extra": {
+        "neos": { "package-key": "Supertext.NeosTranslation" }
+    }
+}

@@ -1,0 +1,37 @@
+# Neos.Demo ships English (US, with English UK as a variant) and German.
+# The demo adds French and Italian, empty, as targets for Supertext.
+Neos:
+  # Railway terminates TLS at its proxy and forwards plain HTTP.
+  Flow:
+    http:
+      trustedProxies:
+        proxies: '*'
+  Neos:
+    sites:
+      '*':
+        contentDimensions:
+          resolver:
+            options:
+              segments:
+                -
+                  dimensionIdentifier: language
+                  dimensionValueMapping:
+                    fr: fr
+                    it: it
+  ContentRepositoryRegistry:
+    contentRepositories:
+      default:
+        contentDimensions:
+          language:
+            values:
+              fr:
+                label: 'Français'
+              it:
+                label: 'Italiano'
+
+Supertext:
+  NeosTranslation:
+    languages:
+      de: { code: 'de-CH', politeness: 'more' }
+      fr: { code: 'fr-CH', politeness: 'more' }
+      it: { code: 'it-CH', politeness: 'more' }

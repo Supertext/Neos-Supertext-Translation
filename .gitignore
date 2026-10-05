@@ -1,0 +1,6 @@
+/vendor/
+/Packages/
+composer.lock
+.DS_Store
+!demo/composer.lock
+Tests/Docs/node_modules/

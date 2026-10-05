@@ -1,0 +1,5 @@
+.git
+.github
+vendor
+Packages
+Tests/Docs/node_modules

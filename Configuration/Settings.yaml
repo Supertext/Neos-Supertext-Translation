@@ -1,0 +1,61 @@
+Supertext:
+  NeosTranslation:
+    # Translate automatically when a node is created in another language
+    # (Neos UI "Create" / "Create and copy" in a new language, or supertext:translate).
+    enabled: true
+
+    # Supertext API key. The SUPERTEXT_API_KEY environment variable takes precedence.
+    # Supertext shows the key as "Supertext-Auth-Key <key>"; either form works.
+    apiKey: ''
+
+    # API base URL. SUPERTEXT_API_ENDPOINT takes precedence.
+    # Live: https://api.supertext.com/v1/  (also api.staging… / api.testing…)
+    endpoint: 'https://api.supertext.com/v1/'
+
+    # Seconds between status checks / maximum seconds to wait for one document.
+    pollInterval: 2
+    pollTimeout: 240
+
+    # Name of the language dimension in the content repository.
+    languageDimension: 'language'
+
+    # Optional per-language settings, keyed by dimension value. Without an entry the
+    # dimension value is sent as is ("en_US" becomes "en-US").
+    #   code:       target language code sent to Supertext, e.g. "de-CH"
+    #   politeness: "more" (formal: Sie/vous), "less" (informal: du/tu) or "default"
+    #   enabled:    false to never translate into this language
+    languages: []
+    #  de:
+    #    code: 'de-CH'
+    #    politeness: 'more'
+
+    # Which string properties are translated, by Inspector editor. Inline-editable
+    # properties are always translated as HTML. Per property you can override with
+    #   properties.<name>.options.supertext.translate: true|false
+    editors:
+      plainText:
+        - 'Neos.Neos/Inspector/Editors/TextFieldEditor'
+        - 'Neos.Neos/Inspector/Editors/TextAreaEditor'
+      richText:
+        - 'Neos.Neos/Inspector/Editors/RichTextEditor'
+
+    # Properties never translated (regenerated or technical).
+    excludedProperties:
+      - 'uriPathSegment'
+
+Neos:
+  ContentRepositoryRegistry:
+    presets:
+      'default':
+        commandHooks:
+          'Supertext.NeosTranslation:CollectTranslations':
+            factoryObjectName: 'Supertext\NeosTranslation\ContentRepository\TranslationCommandHookFactory'
+
+  Flow:
+    http:
+      middlewares:
+        # Sends everything collected during the request to Supertext once the
+        # request has been handled: one document per target language.
+        'Supertext.NeosTranslation:TranslatePending':
+          position: 'before dispatch'
+          middleware: 'Supertext\NeosTranslation\Http\TranslatePendingMiddleware'

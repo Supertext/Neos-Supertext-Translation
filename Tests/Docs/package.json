@@ -1,0 +1,13 @@
+{
+  "name": "supertext-neos-docs-screenshots",
+  "private": true,
+  "description": "Stand-in API and docs screenshots for the Neos demo. See docs/DEVELOPER.md -> Docs screenshots.",
+  "type": "module",
+  "scripts": {
+    "stand-in": "node stand-in.mjs",
+    "screenshots": "node screenshots.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.63.0"
+  }
+}

@@ -1,0 +1,34 @@
+{
+    "name": "supertext/neos-demo-project",
+    "description": "Supertext Neos demo site (Railway container). Not a package - see docs/DEVELOPER.md -> Demo.",
+    "type": "project",
+    "config": {
+        "vendor-dir": "Packages/Libraries",
+        "bin-dir": "bin",
+        "sort-packages": true,
+        "allow-plugins": {
+            "neos/composer-plugin": true
+        }
+    },
+    "require": {
+        "neos/neos": "~9.1.0",
+        "neos/contentgraph-doctrinedbaladapter": "~9.1.0",
+        "neos/neos-ui": "~9.1.0",
+        "neos/seo": "~4.1",
+        "neos/demo": "~9.1.0",
+        "supertext/neos-translation": "@dev",
+        "supertext/neos-demo": "@dev"
+    },
+    "repositories": {
+        "distributionPackages": {
+            "type": "path",
+            "url": "./DistributionPackages/*"
+        }
+    },
+    "scripts": {
+        "post-update-cmd": "Neos\\Flow\\Composer\\InstallerScripts::postUpdateAndInstall",
+        "post-install-cmd": "Neos\\Flow\\Composer\\InstallerScripts::postUpdateAndInstall",
+        "post-package-update": "Neos\\Flow\\Composer\\InstallerScripts::postPackageUpdateAndInstall",
+        "post-package-install": "Neos\\Flow\\Composer\\InstallerScripts::postPackageUpdateAndInstall"
+    }
+}
