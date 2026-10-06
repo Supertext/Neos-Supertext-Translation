@@ -11,7 +11,7 @@ For administrators setting up the package on a Neos site.
 | Neos | 9.0 or newer (developed and tested on 9.1) |
 | PHP | 8.2 or newer, with `ext-dom` |
 | Content dimensions | A language dimension (named `language` by default) |
-| Supertext | An account with an API key (supertext.com → Integrations → API) |
+| Supertext | An account ([create one or log in](https://www.supertext.com/person/en/account/signin)) with an API key ([supertext.com → Integrations → API](https://www.supertext.com/en/integrations/api), requires the Admin role) |
 | Network | The web server must reach `https://api.supertext.com` over HTTPS |
 
 ## 1. Add the package
@@ -30,7 +30,12 @@ Nothing to activate: the package registers itself (a content repository command 
 
 ## 2. Set the API key
 
-Either:
+Get the key first:
+
+1. **No Supertext account yet?** [Create one at supertext.com](https://www.supertext.com/person/en/account/signin) (the same page logs you in if you already have one).
+2. **Generate your API key** at [supertext.com → Integrations → API](https://www.supertext.com/en/integrations/api). This requires the **Admin** role in your Supertext account; ask your account admin otherwise.
+
+Then set it, either:
 
 - **Environment variable (recommended):** `SUPERTEXT_API_KEY=...` for the web server and CLI. It wins over the setting and keeps the key out of the repository.
 - **Setting:** in your site package or `Configuration/Settings.yaml`:
@@ -144,8 +149,8 @@ Translations already made stay in place; they are ordinary Neos content.
 | Symptom | Cause / fix |
 | --- | --- |
 | New language pages stay in the source language | Look in `Data/Logs/System.log` (`System_Development.log` in Development context) for lines starting with `Supertext:`. The HTTP response of the "create" request also carries an `X-Supertext-Error` header. |
-| `No Supertext API key configured` | Set `SUPERTEXT_API_KEY` for the web server (e.g. Apache `SetEnv`, container variables) and the CLI, or the `apiKey` setting. `./flow supertext:check` tests it. |
-| `Authentication failed` | Wrong key. Paste it again; the `Supertext-Auth-Key ` prefix is optional. |
+| `No Supertext API key configured` | Set `SUPERTEXT_API_KEY` for the web server (e.g. Apache `SetEnv`, container variables) and the CLI, or the `apiKey` setting. No key yet: see *2. Set the API key*. `./flow supertext:check` tests it. |
+| `Authentication failed` | Wrong or revoked key. Generate a new one at [supertext.com → Integrations → API](https://www.supertext.com/en/integrations/api) (Admin role) and paste it again; the `Supertext-Auth-Key ` prefix is optional. |
 | `Too many requests` | Supertext's per-second limit; the package retries automatically (up to 4 times). Try again shortly if it persists. |
 | `Timed out waiting for the Supertext translation` | Very long pages; raise `pollTimeout` (and PHP's `max_execution_time` / proxy timeouts accordingly). |
 | "Root Node Aggregates cannot be varied" when creating a page in a new language | The language was added after the content was imported. Extend the root node to it (see *Languages*). |

@@ -6,6 +6,9 @@ Supertext:
 
     # Supertext API key. The SUPERTEXT_API_KEY environment variable takes precedence.
     # Supertext shows the key as "Supertext-Auth-Key <key>"; either form works.
+    # No Supertext account yet? Create one (or log in): https://www.supertext.com/person/en/account/signin
+    # Generate the key at supertext.com > Integrations > API (requires the Admin role):
+    # https://www.supertext.com/en/integrations/api
     apiKey: ''
 
     # API base URL. SUPERTEXT_API_ENDPOINT takes precedence.

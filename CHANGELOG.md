@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Links to create a Supertext account and generate the API key (Integrations → API, Admin role) in `Settings.yaml`, the missing/invalid-key messages, `supertext:check` and the docs.
 
 ## 0.1.0 — 2026-10-05
 - First version for Neos 9: Supertext AI translation when pages and content are created in another language (Neos UI *Create and copy* / *Create empty*, `supertext:translate`).

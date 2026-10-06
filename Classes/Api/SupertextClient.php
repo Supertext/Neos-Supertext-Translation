@@ -142,7 +142,7 @@ class SupertextClient
         // Accept the key with or without the "Supertext-Auth-Key " prefix Supertext shows it with.
         $apiKey = (string)preg_replace('/^Supertext-Auth-Key\s+/i', '', trim($this->settings->getApiKey()));
         if ($apiKey === '') {
-            throw new SupertextException('No Supertext API key configured (Supertext.NeosTranslation.apiKey or SUPERTEXT_API_KEY).', 1759500010);
+            throw new SupertextException('No Supertext API key configured (Supertext.NeosTranslation.apiKey or SUPERTEXT_API_KEY). Generate one at https://www.supertext.com/en/integrations/api (requires the Admin role); no account yet? Create one at https://www.supertext.com/person/en/account/signin', 1759500010);
         }
         $options['headers'] = array_merge($options['headers'] ?? [], [
             'Authorization' => 'Supertext-Auth-Key ' . $apiKey,
@@ -172,7 +172,7 @@ class SupertextClient
             return $response;
         }
         $message = match (true) {
-            $code === 401, $code === 403 => 'Authentication failed. Please check the Supertext API key.',
+            $code === 401, $code === 403 => 'Authentication failed. Please check the Supertext API key (generate one at https://www.supertext.com/en/integrations/api).',
             $code === 404 => 'The requested Supertext resource was not found.',
             $code === 413 => 'The content is too large for Supertext to translate in one go.',
             $code === 429 => 'Too many requests to Supertext. Please try again shortly.',

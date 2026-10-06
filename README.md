@@ -25,6 +25,8 @@ Which fields are translated is derived from the node types: inline-editable text
 | [User guide](docs/USER_GUIDE.md) | Editors: translating, reviewing, publishing, what gets translated |
 | [Developer guide](docs/DEVELOPER.md) | Architecture, API protocol, local setup, tests, screenshots, demo deployment |
 
+You need a Supertext account ([create one](https://www.supertext.com/person/en/account/signin)) and an API key ([supertext.com → Integrations → API](https://www.supertext.com/en/integrations/api), requires the Admin role).
+
 Quick start (not on Packagist yet — add the GitHub repository first, see the installation guide):
 
 ```bash

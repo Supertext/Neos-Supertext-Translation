@@ -120,6 +120,8 @@ class SupertextCommandController extends CommandController
         $this->outputLine('Endpoint: %s', [$this->settings->getBaseUrl()]);
         if (!$this->client->hasApiKey()) {
             $this->outputLine('<error>No API key configured (SUPERTEXT_API_KEY or Supertext.NeosTranslation.apiKey).</error>');
+            $this->outputLine('No Supertext account yet? Create one at https://www.supertext.com/person/en/account/signin');
+            $this->outputLine('Generate your API key at supertext.com > Integrations > API (requires the Admin role): https://www.supertext.com/en/integrations/api');
             $this->quit(1);
         }
         try {
