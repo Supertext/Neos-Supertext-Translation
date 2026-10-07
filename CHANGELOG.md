@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `supertext:check` prints the package version first (e.g. `Supertext Translation for Neos 0.1.0`), read from Composer at runtime.
+
 ## 0.1.0 — 2026-10-07
 
 - First version for Neos 9: Supertext AI translation when pages and content are created in another language (Neos UI *Create and copy* / *Create empty*, `supertext:translate`).

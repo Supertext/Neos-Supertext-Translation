@@ -24,8 +24,9 @@ Neos UI "Create and copy"  ──►  N × CreateNodeVariant   (one per page/con
 | `Service\PropertySelector` | Which properties are translated, from the node type: string properties that are inline-editable (HTML) or use a configured Inspector text/rich-text editor; `options.supertext.translate` overrides; `excludedProperties`. |
 | `Service\LanguageResolver` | Dimension value → Supertext code/politeness (`languages` setting); skips same-language variants (`en_US` → `en_UK`). |
 | `Api\SupertextClient`, `Api\HtmlDocument` | Same as the TYPO3 extension (Guzzle instead of TYPO3's RequestFactory): HTTP protocol with 429 retries, and packing segments into `<div data-st-id="N">` elements. |
-| `Command\SupertextCommandController` | `supertext:translate` (what *Create and copy* does, plus `--subpages`) and `supertext:check`. Runs without authorization checks. |
+| `Command\SupertextCommandController` | `supertext:translate` (what *Create and copy* does, plus `--subpages`) and `supertext:check` (prints the package version from `Configuration\PackageVersion` first). Runs without authorization checks. |
 | `Configuration\Settings` | Typed settings; `SUPERTEXT_API_KEY` / `SUPERTEXT_API_ENDPOINT` win. |
+| `Configuration\PackageVersion` | Installed package version via `Composer\InstalledVersions::getPrettyVersion('supertext/neos-translation')`, `unknown` if Composer can't tell. No hardcoded copy. |
 
 Writes go through `ContentRepository::handle()`, so they get history, workspace semantics and the editor's permissions like manual edits. In the UI flow they land in the editor's user workspace and are published with the rest.
 
@@ -73,9 +74,10 @@ With PHP's built-in server, use a router that serves existing files and sets `SC
 
 ```bash
 php Tests/HtmlDocumentTest.php   # HTML packing round trip, no Neos needed
+php Tests/PackageVersionTest.php # version helper (Composer InstalledVersions), no Neos needed
 ```
 
-CI (`.github/workflows/ci.yml`) lints all PHP files on 8.2, 8.3 and 8.4, runs that test and syntax-checks the demo entrypoint on every push and pull request.
+CI (`.github/workflows/ci.yml`) lints all PHP files on 8.2, 8.3 and 8.4, runs both tests and syntax-checks the demo entrypoint on every push and pull request.
 
 End to end (manual, before a release): fresh demo, stand-in with `STAND_IN_PREFIX=1`, then (a) `supertext:translate` into French and (b) *Create and copy* into Italian in the UI as the editor; every visible text must be translated, the workspace must show the changes, and publishing must work. `Tests/Docs/screenshots.mjs` runs (b) automatically.
 

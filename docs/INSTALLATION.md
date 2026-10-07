@@ -54,6 +54,14 @@ Check it:
 ./flow supertext:check
 ```
 
+```text
+Supertext Translation for Neos 0.1.0
+Endpoint: https://api.supertext.com/v1/
+API key accepted.
+```
+
+The first line is the installed package version, read from Composer (`dev-main` if you installed the branch). Include it when you report a problem.
+
 ## 3. Languages
 
 The package translates whenever a page or content element is created in another value of the **language dimension** — no further setup needed. It sends the dimension value as the target language (`de` → `de`, `en_US` → `en-US`). To choose regional codes or the formality, map the dimension values:

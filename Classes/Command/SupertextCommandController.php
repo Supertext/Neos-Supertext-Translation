@@ -21,6 +21,7 @@ use Neos\Flow\Cli\CommandController;
 use Neos\Flow\Security\Context as SecurityContext;
 use Neos\Neos\Domain\Service\NodeTypeNameFactory;
 use Supertext\NeosTranslation\Api\SupertextClient;
+use Supertext\NeosTranslation\Configuration\PackageVersion;
 use Supertext\NeosTranslation\Configuration\Settings;
 use Supertext\NeosTranslation\Service\NodeTranslator;
 
@@ -113,10 +114,11 @@ class SupertextCommandController extends CommandController
     }
 
     /**
-     * Check the Supertext API key and endpoint
+     * Show the package version and check the Supertext API key and endpoint
      */
     public function checkCommand(): void
     {
+        $this->outputLine(PackageVersion::label());
         $this->outputLine('Endpoint: %s', [$this->settings->getBaseUrl()]);
         if (!$this->client->hasApiKey()) {
             $this->outputLine('<error>No API key configured (SUPERTEXT_API_KEY or Supertext.NeosTranslation.apiKey).</error>');
