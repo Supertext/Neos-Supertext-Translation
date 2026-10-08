@@ -58,6 +58,8 @@ Your administrator decides per language whether Supertext writes formally (*Sie*
 
 If Supertext can't translate (for example no API key configured, network problem, quota exceeded), Neos still creates the page and its content in the new language, **as untranslated copies** in the source language. You can translate them by hand, or discard the changes in your workspace and try again later. Your administrator finds the reason in the Neos system log (see the installation guide).
 
+The package has no screens of its own: everything you see while translating is Neos' own interface, in the interface language set in your user settings.
+
 ## Tips
 
 - Translate a page at once with *Create and copy* rather than element by element: it's one request to Supertext, and the context makes the translation more consistent.

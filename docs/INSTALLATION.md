@@ -92,6 +92,10 @@ and for this package:
 
 ![Configuration module: Supertext.NeosTranslation settings with endpoint https://api.supertext.com/v1/ and language codes de-CH, fr-CH, it-CH, politeness more](images/configuration-supertext.png)
 
+### Interface languages
+
+The package adds no screens, dialogs or back-end messages of its own: editors only use Neos' own *Create and copy* dialog, which follows each user's Neos interface language (user menu → *User Settings* → *Interface Language*), English, German, French and Italian included. The only text the package writes is for administrators: the output of the `supertext:*` CLI commands, the `X-Supertext-Error` response header and log lines, all in English.
+
 ## 4. Check it works
 
 Open a page in the backend, switch the language menu to a language the page doesn't exist in yet, and choose **Create and copy** — the page appears translated after a few seconds (see the [user guide](USER_GUIDE.md)). Or from the CLI:

@@ -161,6 +161,10 @@ Releases are published by `.github/workflows/release.yml` when the version is of
 - Exception codes are Unix timestamps (`1759500xxx` for the API client, shared with TYPO3).
 - Keep the three docs in `docs/` and the screenshots current with every change (see `CLAUDE.md`).
 
+## Interface strings
+
+The package has no UI of its own today (it hooks into the content repository; editors only see Neos' own dialogs), so it ships no translation files. CLI output, the `X-Supertext-Error` header and log lines are English for administrators. If an editor- or admin-facing UI is added (a Neos UI notification, a backend module, a flash message), its strings go into Flow XLIFF files `Resources/Private/Translations/{en,de,fr,it}/Main.xlf` (source `en`), used with Flow's `Translator` / `I18n.translate()` / the Neos UI's `i18n` registry, and every new string needs all four languages in the same commit (formal Sie/vous/Lei, Neos' own terms, "Supertext", placeholders and URLs unchanged).
+
 ## Known limitations / roadmap
 
 - Translation runs synchronously inside the editor's request (up to `pollTimeout` per document). Planned: a job queue for very large pages.

@@ -23,6 +23,10 @@ Everywhere an administrator enters or is told about the API key — the settings
 
 Wording: "No Supertext account yet? Create one at supertext.com. Generate your API key at supertext.com → Integrations → API (requires the Admin role)." In the UI, links open in a new tab (`target="_blank" rel="noopener"`); where the CMS shows plain text only, use the bare URLs. New screens or messages that mention the key get the links too.
 
+## UI languages (always)
+
+The plugin's own UI (buttons, panels, dialogs, settings, permissions, messages) is available in English, German, French and Italian through the CMS's own translation mechanism, so it follows the user's back-end language. New or changed strings get all four languages in the same commit. Formal address (Sie, vous, Lei), the CMS's own terms in each language, "Supertext", placeholders and URLs never translated.
+
 ## Plugin list (always)
 
 `README.md` ends with the shared list of all Supertext plugins (between the `<!-- supertext-plugins:start -->` and `<!-- supertext-plugins:end -->` markers). It is identical in every Supertext plugin repo: when a plugin is added, renamed or its description changes, update the list in **all** repos, not just this one.
@@ -77,4 +81,5 @@ Lessons from testing against the live API (October 2026), to apply in every plug
 ## Neos specifics
 
 - Hook point: a content repository command hook (`TranslationCommandHook`) notices `CreateNodeVariant` into another language and only queues it; `TranslatePendingMiddleware` (HTTP) and `supertext:translate` (CLI) translate the queue in one batch per target language. Never call Supertext from inside the hook: "Create and copy" sends one command per content element.
+- No UI of its own yet, so no XLIFF files: any editor- or admin-facing UI added later gets `Resources/Private/Translations/{en,de,fr,it}/Main.xlf` (see `docs/DEVELOPER.md` → Interface strings).
 - Test against the local stand-in (`Tests/Docs/stand-in.mjs`, `STAND_IN_PREFIX=1` marks untranslated text) before the live API.
