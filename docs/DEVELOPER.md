@@ -77,7 +77,7 @@ php Tests/HtmlDocumentTest.php   # HTML packing round trip, no Neos needed
 php Tests/PackageVersionTest.php # version helper (Composer InstalledVersions), no Neos needed
 ```
 
-CI (`.github/workflows/ci.yml`) lints all PHP files on 8.2, 8.3 and 8.4, runs both tests and syntax-checks the demo entrypoint on every push and pull request.
+CI (`.github/workflows/ci.yml`) lints all PHP files on 8.2, 8.3 and 8.4, runs both tests and syntax-checks the demo entrypoint on every push and pull request, and runs PHPStan (see *Code quality and security checks*).
 
 End to end (manual, before a release): fresh demo, stand-in with `STAND_IN_PREFIX=1`, then (a) `supertext:translate` into French and (b) *Create and copy* into Italian in the UI as the editor; every visible text must be translated, the workspace must show the changes, and publishing must work. `Tests/Docs/screenshots.mjs` runs (b) automatically.
 
@@ -147,6 +147,15 @@ docker run --rm -p 8080:80 --network neosdemo -v neosdemo:/data \
 ```
 
 **Updating Neos in the demo:** in a folder that mirrors the container layout (`composer.json`, `DistributionPackages/Supertext.NeosDemo`, `DistributionPackages/Supertext.NeosTranslation`), run `composer update "neos/*"` and commit `demo/composer.lock`.
+
+## Code quality and security checks
+
+- **Checks** workflow (`.github/workflows/checks.yml`): actionlint and zizmor lint the workflows on every push and pull request; dependency review fails a pull request that adds a package with a known vulnerability (moderate or worse). Third-party actions are pinned to commit SHAs (Dependabot keeps them current), the default token is read-only and checkouts don't keep credentials. Locally: `pip install actionlint-py zizmor`, then `actionlint` and `zizmor .github/workflows` in the repo root.
+- **Links** workflow (`.github/workflows/links.yml`): lychee checks all Markdown links weekly and whenever docs change on `main`. Broken links open (or update) the issue "Broken links in the docs". Links that can't work from CI (local URLs, placeholders, pages behind a login) are excluded in `.lycheeignore`.
+- **PHPStan** (job *PHPStan* in `.github/workflows/ci.yml`, config `phpstan.neon`): level 5 over `Classes/`, no baseline (nothing to baseline when it was introduced). PHPStan needs Neos's classes, and a fresh Composer resolve of `neos/neos` on its own doesn't work (it needs a content graph adapter, and Composer blocks some Neos dependency versions over security advisories), so the job installs the Neos the demo locks: it puts this package's `composer.json` into `demo/DistributionPackages/Supertext.NeosTranslation/`, runs `composer install --working-dir=demo --no-dev --no-scripts` and then `phpstan analyse --autoload-file=demo/Packages/Libraries/autoload.php` (PHPStan 2.1 phar from setup-php). Locally the same commands work with a PHPStan 2.1 phar; delete `demo/DistributionPackages/Supertext.NeosTranslation/` and `demo/Packages/` afterwards. If findings ever have to be accepted, put them in `phpstan-baseline.neon` (`--generate-baseline`) and include it from `phpstan.neon`.
+- **GitHub settings** (set by Remy's setup script, not in the repo): secret scanning with push protection (a push containing a known token format is rejected; findings under *Security → Secret scanning*) and CodeQL default setup (findings under *Security → Code scanning* and as pull request comments). CodeQL doesn't cover PHP, which is why this repo runs PHPStan.
+
+Before starting work in this repo, look at its open findings: code scanning alerts, secret scanning alerts, Dependabot pull requests and the issue "Broken links in the docs".
 
 ## Releasing
 
