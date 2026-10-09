@@ -42,8 +42,15 @@ jobs:
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: '8.3'
+          extensions: intl, gd, zip, exif, pdo_mysql
+          tools: phpstan:2.1
           coverage: none
-      - name: Install Neos and PHPStan
-        run: composer install --no-interaction --no-progress
+      # Neos in the versions the demo locks. The package itself only needs its
+      # composer.json there: PHPStan reads Classes/ from the repo root.
+      - name: Install Neos (demo/composer.lock)
+        run: |
+          mkdir -p demo/DistributionPackages/Supertext.NeosTranslation
+          cp composer.json demo/DistributionPackages/Supertext.NeosTranslation/
+          composer install --working-dir=demo --no-dev --no-scripts --no-interaction --no-progress
       - name: PHPStan
-        run: vendor/bin/phpstan analyse --no-progress --error-format=github
+        run: phpstan analyse --no-progress --error-format=github --autoload-file=demo/Packages/Libraries/autoload.php

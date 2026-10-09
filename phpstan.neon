@@ -1,5 +1,6 @@
 # PHPStan: see docs/DEVELOPER.md → Code quality and security checks.
-# Run with `composer install && vendor/bin/phpstan analyse` (installs Neos as a dev dependency).
+# Needs Neos's classes: CI installs the demo's locked Neos and passes
+# --autoload-file=demo/Packages/Libraries/autoload.php.
 parameters:
     level: 5
     paths:
