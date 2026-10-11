@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fixed: target languages without a region (e.g. a dimension value `de` without a `code` setting) are now sent to Supertext as a regional code (`de-DE`, `fr-FR`, `it-IT`, …), which Supertext requires; configured codes are normalized (`de_ch` → `de-CH`). The source is always sent without region, also when its `code` setting has one.
 - Docs: interface languages. The package has no screens of its own; editors use Neos' dialogs, which follow their interface language (English, German, French, Italian and more). CLI output stays English.
 - `supertext:check` prints the package version first (e.g. `Supertext Translation for Neos 0.1.0`), read from Composer at runtime.
 

@@ -23,7 +23,8 @@ Supertext:
     languageDimension: 'language'
 
     # Optional per-language settings, keyed by dimension value. Without an entry the
-    # dimension value is sent as is ("en_US" becomes "en-US").
+    # dimension value is sent with a region ("en_US" becomes "en-US", "de" becomes
+    # "de-DE"; see docs/DEVELOPER.md -> Language codes).
     #   code:       target language code sent to Supertext, e.g. "de-CH"
     #   politeness: "more" (formal: Sie/vous), "less" (informal: du/tu) or "default"
     #   enabled:    false to never translate into this language

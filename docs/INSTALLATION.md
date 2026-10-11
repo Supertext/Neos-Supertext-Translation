@@ -64,14 +64,14 @@ The first line is the installed package version, read from Composer (`dev-main` 
 
 ## 3. Languages
 
-The package translates whenever a page or content element is created in another value of the **language dimension** — no further setup needed. It sends the dimension value as the target language (`de` → `de`, `en_US` → `en-US`). To choose regional codes or the formality, map the dimension values:
+The package translates whenever a page or content element is created in another value of the **language dimension** — no further setup needed. It sends the dimension value as the target language, always with a region, which Supertext requires: `en_US` → `en-US`, and a value without region gets a default: `de` → `de-DE`, `fr` → `fr-FR`, `it` → `it-IT`, `en` → `en-US` (full list in the [developer guide](DEVELOPER.md#language-codes)). The source language is sent without region (`en_US` → `en`). To choose other regional codes (e.g. Swiss German) or the formality, map the dimension values:
 
 ```yaml
 Supertext:
   NeosTranslation:
     languages:
       de:
-        code: 'de-CH'        # target language code sent to Supertext
+        code: 'de-CH'        # target language code sent to Supertext (include the region)
         politeness: 'more'   # more = formal (Sie/vous/Lei), less = informal (du/tu/tu)
       fr:
         code: 'fr-CH'

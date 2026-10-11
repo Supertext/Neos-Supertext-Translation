@@ -29,6 +29,8 @@ jobs:
         run: php Tests/HtmlDocumentTest.php
       - name: Version helper test
         run: php Tests/PackageVersionTest.php
+      - name: Language codes test
+        run: php Tests/LanguageCodesTest.php
       - name: Demo entrypoint syntax
         run: sh -n demo/entrypoint.sh
 

@@ -37,7 +37,7 @@ class SupertextClient
     /**
      * Translates a complete HTML document and returns the translated HTML.
      *
-     * @param string $targetLanguage BCP-47 code, e.g. "de-CH"
+     * @param string $targetLanguage regional code, e.g. "de-CH" (see LanguageCodes::target())
      * @param string $sourceLanguage primary subtag ("de"), empty for auto-detection
      * @param string $politeness "default", "more" or "less"
      */
@@ -64,7 +64,7 @@ class SupertextClient
         if ($sourceLanguage !== '') {
             // Supertext expects the source as a primary subtag ("de", not "de-CH"),
             // otherwise the pair is rejected with INVALID_LANGUAGE_PAIR.
-            $fields['source_lang'] = strtolower((string)strtok($sourceLanguage, '-_'));
+            $fields['source_lang'] = LanguageCodes::source($sourceLanguage);
         }
         if (in_array($politeness, ['more', 'less'], true)) {
             $fields['politeness'] = $politeness;

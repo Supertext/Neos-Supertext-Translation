@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace Supertext\NeosTranslation\Service;
 
 use Neos\Flow\Annotations as Flow;
+use Supertext\NeosTranslation\Api\LanguageCodes;
 use Supertext\NeosTranslation\Configuration\Settings;
 
 /**
- * Maps language dimension values ("de", "en_US") to Supertext language codes.
+ * Maps language dimension values ("de", "en_US") to Supertext language codes:
+ * regional targets ("de" => "de-DE", "en_US" => "en-US", or the configured code)
+ * and bare sources ("en_US" => "en"). Rules in Api\LanguageCodes.
  */
 #[Flow\Scope('singleton')]
 class LanguageResolver
@@ -29,17 +32,19 @@ class LanguageResolver
         return $this->primary($source) !== $this->primary($target);
     }
 
-    /** Supertext target code, e.g. "de" => "de-CH" when configured, "en_US" => "en-US". */
+    /**
+     * Supertext target code, always with a region: the configured code ("de" =>
+     * "de-CH"), else the dimension value ("en_US" => "en-US", bare "de" => "de-DE").
+     */
     public function targetCode(string $dimensionValue): string
     {
-        $code = trim((string)($this->settings->getLanguage($dimensionValue)['code'] ?? ''));
-        return $code !== '' ? $code : str_replace('_', '-', $dimensionValue);
+        return LanguageCodes::target($dimensionValue, $this->configuredCode($dimensionValue));
     }
 
-    /** Supertext source code: the primary subtag ("en_US" => "en"). */
+    /** Supertext source code: the bare language ("en_US" => "en"; a configured "de-CH" => "de"). */
     public function sourceCode(string $dimensionValue): string
     {
-        return $this->primary($dimensionValue);
+        return LanguageCodes::source($dimensionValue, $this->configuredCode($dimensionValue));
     }
 
     /** "more", "less" or "default" */
@@ -47,6 +52,11 @@ class LanguageResolver
     {
         $politeness = (string)($this->settings->getLanguage($dimensionValue)['politeness'] ?? 'default');
         return in_array($politeness, ['more', 'less'], true) ? $politeness : 'default';
+    }
+
+    private function configuredCode(string $dimensionValue): string
+    {
+        return trim((string)($this->settings->getLanguage($dimensionValue)['code'] ?? ''));
     }
 
     private function primary(string $value): string

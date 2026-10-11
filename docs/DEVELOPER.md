@@ -22,7 +22,8 @@ Neos UI "Create and copy"  ──►  N × CreateNodeVariant   (one per page/con
 | `Http\TranslatePendingMiddleware` | Flow HTTP middleware, `before dispatch`. After the request was handled it translates the queue and adds `X-Supertext-Translated: <lang>=<fields>` or `X-Supertext-Error` to the response. The UI reloads the page afterwards, so the editor sees the translation. |
 | `Service\NodeTranslator` | Groups the queue by workspace, source and target dimension space point; adds tethered descendants (e.g. a page's `main` collection, created by Neos with the parent without own commands); builds one document; writes results with `SetNodeProperties`; rebuilds `uriPathSegment` of documents from the translated title (`NodeUriPathSegmentGenerator`). Splits documents above `SupertextClient::MAX_DOCUMENT_CHARACTERS`. Failures are logged and leave the variants as untranslated copies. |
 | `Service\PropertySelector` | Which properties are translated, from the node type: string properties that are inline-editable (HTML) or use a configured Inspector text/rich-text editor; `options.supertext.translate` overrides; `excludedProperties`. |
-| `Service\LanguageResolver` | Dimension value → Supertext code/politeness (`languages` setting); skips same-language variants (`en_US` → `en_UK`). |
+| `Service\LanguageResolver` | Dimension value → Supertext code/politeness (`languages` setting, see *Language codes*); skips same-language variants (`en_US` → `en_UK`). |
+| `Api\LanguageCodes` | The language code rules (bare source, regional target with defaults); no Neos classes. |
 | `Api\SupertextClient`, `Api\HtmlDocument` | Same as the TYPO3 extension (Guzzle instead of TYPO3's RequestFactory): HTTP protocol with 429 retries, and packing segments into `<div data-st-id="N">` elements. |
 | `Command\SupertextCommandController` | `supertext:translate` (what *Create and copy* does, plus `--subpages`) and `supertext:check` (prints the package version from `Configuration\PackageVersion` first). Runs without authorization checks. |
 | `Configuration\Settings` | Typed settings; `SUPERTEXT_API_KEY` / `SUPERTEXT_API_ENDPOINT` win. |
@@ -36,12 +37,22 @@ Rich text (inline-editable/RichTextEditor properties) is sent as one `data-st-id
 
 AI file translation API v1, the same as the WordPress plugin and TYPO3 extension:
 
-1. `POST translate/ai/file` — multipart: `file` (`content.html`, part `Content-Type: text/html` exactly), `target_lang` (`de-CH`), `source_lang` (primary subtag, `en`), optional `politeness` (`more`/`less`) → `{file_id}`
+1. `POST translate/ai/file` — multipart: `file` (`content.html`, part `Content-Type: text/html` exactly), `target_lang` (regional code, `de-CH`), `source_lang` (bare language, `en`; see *Language codes*), optional `politeness` (`more`/`less`) → `{file_id}`
 2. `GET translate/ai/file/{id}/status` until `done` (`error`, `limit_exceeded`, `deleted` fail)
 3. `GET translate/ai/file/{id}/translation` → translated HTML
 4. `DELETE translate/ai/file/{id}` (files also expire after 24 h)
 
 Header `Authorization: Supertext-Auth-Key <key>`; a pasted prefix is stripped. HTTP 429 is retried up to 4 times (`Retry-After`, else 1/2/4/8 s with jitter). Base URLs: `https://api.supertext.com/v1/` (live), `api.staging…`, `api.testing…`.
+
+### Language codes
+
+Learned from the live API: the **source** is the bare language (`en`, `de`), the **target** a regional code (`de-DE`, `fr-CH`, `en-US`). Supertext rejects a bare target such as `de` with `INVALID_LANGUAGE_PAIR`, and a regional source too. `Api\LanguageCodes` applies the rule; `Service\LanguageResolver` feeds it the dimension values and the `languages` setting:
+
+- Source: the source dimension value (or its configured `code`) reduced to the language: `en_US` → `en`.
+- Target: the configured `code` if set, otherwise the dimension value. A code with a region keeps it, normalized (`en_US` / `en-us` → `en-US`; scripts and numeric regions stay: `zh-Hant`, `es-419`). A bare code gets a regional default: ar→ar-SA, bg→bg-BG, cs→cs-CZ, da→da-DK, de→de-DE, el→el-GR, en→en-US, es→es-ES, et→et-EE, fi→fi-FI, fr→fr-FR, hr→hr-HR, hu→hu-HU, it→it-IT, ja→ja-JP, ko→ko-KR, lt→lt-LT, lv→lv-LV, nb→nb-NO, nl→nl-NL, pl→pl-PL, pt→pt-PT, ro→ro-RO, ru→ru-RU, sk→sk-SK, sl→sl-SI, sr→sr-RS, sv→sv-SE, th→th-TH, tr→tr-TR, uk→uk-UA, vi→vi-VN, zh→zh-CN (same table as the other Supertext plugins). Unknown bare codes are sent unchanged, so Supertext's error names them.
+- The API allows translating within one language (source `en`, target `en-GB`); this package still skips such variants on purpose (see `LanguageResolver::needsTranslation()`).
+
+The stand-in (`Tests/Docs/stand-in.mjs`) rejects bare targets and regional sources like the real API.
 
 ## Local development
 
@@ -75,6 +86,7 @@ With PHP's built-in server, use a router that serves existing files and sets `SC
 ```bash
 php Tests/HtmlDocumentTest.php   # HTML packing round trip, no Neos needed
 php Tests/PackageVersionTest.php # version helper (Composer InstalledVersions), no Neos needed
+php Tests/LanguageCodesTest.php  # source/target language code rules, no Neos needed
 ```
 
 CI (`.github/workflows/ci.yml`) lints all PHP files on 8.2, 8.3 and 8.4, runs both tests and syntax-checks the demo entrypoint on every push and pull request, and runs PHPStan (see *Code quality and security checks*).
