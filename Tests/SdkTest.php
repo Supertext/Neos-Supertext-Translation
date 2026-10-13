@@ -44,6 +44,7 @@ $check('target en_US', LanguageCodes::target('en_US'), 'en-US');
 $check('target bare de', LanguageCodes::target('de'), 'de-DE');
 $check('target configured de-ch', LanguageCodes::target('de-ch'), 'de-CH');
 $check('source en_US', LanguageCodes::source('en_US'), 'en');
+$check('target variant dropped', LanguageCodes::target('de_DE_formal'), 'de-DE');
 
 // 2. A full translateTexts() run through Guzzle (mocked): 429 retry, upload, poll, download, delete.
 $history = [];
@@ -95,6 +96,18 @@ foreach (['authentication_failure', 'transport_error'] as $expected) {
     } catch (SupertextException $e) {
         $check("error code $expected", $e->errorCode, $expected);
     }
+}
+
+// 4. A language Supertext doesn't know at all: HTTP 404 with INVALID_LANGUAGE_PAIR, not "not found".
+$unknown = new Client('k', transport: new GuzzleHttpTransport(new \GuzzleHttp\Client(['handler' => HandlerStack::create(new MockHandler([
+    new Response(404, ['Content-Type' => 'application/json'], '{"error_code":"INVALID_LANGUAGE_PAIR","source_lang":"en","target_lang":"xx-YY"}'),
+]))])));
+try {
+    $unknown->submit('<p data-st-id="0">Hi</p>', 'xx-YY', 'en');
+    $failures[] = 'expected invalid_language_pair, got no error';
+} catch (SupertextException $e) {
+    $check('unknown language: error code', $e->errorCode, 'invalid_language_pair');
+    $check('unknown language: codes', [$e->sourceLang, $e->targetLang], ['en', 'xx-YY']);
 }
 
 foreach ($failures as $failure) {
