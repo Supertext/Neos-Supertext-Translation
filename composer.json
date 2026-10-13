@@ -19,8 +19,8 @@
     },
     "autoload": {
         "psr-4": {
-            "Supertext\\NeosTranslation\\Sdk\\": "lib/supertext-sdk/src/",
-            "Supertext\\NeosTranslation\\": "Classes/"
+            "Supertext\\NeosTranslation\\": "Classes/",
+            "Supertext\\NeosTranslation\\Sdk\\": "lib/supertext-sdk/src/"
         }
     },
     "extra": {
