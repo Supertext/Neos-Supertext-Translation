@@ -15,24 +15,17 @@
         "ext-dom": "*",
         "neos/neos": "^9.0",
         "neos/contentrepository-core": "^9.0",
-        "guzzlehttp/guzzle": "^7.4",
-        "supertext/supertext-sdk": "^0.1 || dev-main"
+        "guzzlehttp/guzzle": "^7.4"
     },
     "autoload": {
         "psr-4": {
+            "Supertext\\NeosTranslation\\Sdk\\": "lib/supertext-sdk/src/",
             "Supertext\\NeosTranslation\\": "Classes/"
         }
     },
     "extra": {
         "neos": {
             "package-key": "Supertext.NeosTranslation"
-        }
-    },
-    "repositories": {
-        "supertext-sdk": {
-            "type": "vcs",
-            "url": "https://github.com/Supertext/Supertext-API-SDK-and-Guide",
-            "no-api": true
         }
     }
 }

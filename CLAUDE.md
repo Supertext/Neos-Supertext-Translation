@@ -87,6 +87,7 @@ Lessons from testing against the live API (October 2026), to apply in every plug
 
 ## Neos specifics
 
+- Supertext API calls go through the bundled SDK in `lib/supertext-sdk/` (namespace `Supertext\NeosTranslation\Sdk`). Never edit it: fix the SDK in Supertext-API-SDK-and-Guide, then `scripts/vendor-sdk.sh`.
 - Hook point: a content repository command hook (`TranslationCommandHook`) notices `CreateNodeVariant` into another language and only queues it; `TranslatePendingMiddleware` (HTTP) and `supertext:translate` (CLI) translate the queue in one batch per target language. Never call Supertext from inside the hook: "Create and copy" sends one command per content element.
 - No UI of its own yet, so no XLIFF files: any editor- or admin-facing UI added later gets `Resources/Private/Translations/{en,de,fr,it}/Main.xlf` (see `docs/DEVELOPER.md` → Interface strings).
 - Test against the local stand-in (`Tests/Docs/stand-in.mjs`, `STAND_IN_PREFIX=1` marks untranslated text) before the live API.

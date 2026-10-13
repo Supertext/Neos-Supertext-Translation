@@ -1,8 +1,8 @@
 <?php
 
 // Checks the glue between the package and the Supertext SDK: the Guzzle transport and
-// how Neos dimension values become Supertext codes. Needs Guzzle and the SDK, e.g. the
-// demo's dependencies (CI: composer install --working-dir=demo):
+// how Neos dimension values become Supertext codes. Uses the bundled SDK (lib/supertext-sdk)
+// and needs Guzzle, e.g. from the demo's dependencies (CI: composer install --working-dir=demo):
 //   php Tests/SdkTest.php
 // The SDK has its own tests for the protocol, HTML packing and language codes.
 declare(strict_types=1);
@@ -13,6 +13,13 @@ foreach ([__DIR__ . '/../vendor/autoload.php', __DIR__ . '/../demo/Packages/Libr
         break;
     }
 }
+// The bundled SDK and the transport, independent of where the package's own autoloading points.
+spl_autoload_register(static function (string $class): void {
+    $prefix = 'Supertext\\NeosTranslation\\Sdk\\';
+    if (str_starts_with($class, $prefix)) {
+        require __DIR__ . '/../lib/supertext-sdk/src/' . str_replace('\\', '/', substr($class, strlen($prefix))) . '.php';
+    }
+});
 require_once __DIR__ . '/../Classes/Api/GuzzleHttpTransport.php';
 
 use GuzzleHttp\Handler\MockHandler;
@@ -20,10 +27,10 @@ use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Middleware;
 use GuzzleHttp\Psr7\Response;
 use Supertext\NeosTranslation\Api\GuzzleHttpTransport;
-use Supertext\Sdk\Client;
-use Supertext\Sdk\LanguageCodes;
-use Supertext\Sdk\Segment;
-use Supertext\Sdk\SupertextException;
+use Supertext\NeosTranslation\Sdk\Client;
+use Supertext\NeosTranslation\Sdk\LanguageCodes;
+use Supertext\NeosTranslation\Sdk\Segment;
+use Supertext\NeosTranslation\Sdk\SupertextException;
 
 $failures = [];
 $check = static function (string $name, mixed $actual, mixed $expected) use (&$failures): void {

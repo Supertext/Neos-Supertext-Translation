@@ -48,6 +48,11 @@ Supertext:
       - 'uriPathSegment'
 
 Neos:
+  Flow:
+    object:
+      # The bundled Supertext SDK (lib/supertext-sdk) is plain PHP: no Flow objects, proxies or reflection.
+      excludeClasses:
+        'Supertext.NeosTranslation': ['Supertext\\NeosTranslation\\Sdk\\.*']
   ContentRepositoryRegistry:
     presets:
       'default':

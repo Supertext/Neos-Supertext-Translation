@@ -20,7 +20,7 @@ use Supertext\NeosTranslation\Api\SupertextClientFactory;
 use Supertext\NeosTranslation\Configuration\Settings;
 use Supertext\NeosTranslation\Domain\PendingTranslation;
 use Supertext\NeosTranslation\Domain\PendingTranslations;
-use Supertext\Sdk\Segment;
+use Supertext\NeosTranslation\Sdk\Segment;
 
 /**
  * Translates all pending node variants: one Supertext document per

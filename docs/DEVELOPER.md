@@ -11,7 +11,7 @@ Neos UI "Create and copy"  ──►  N × CreateNodeVariant   (one per page/con
                                       │
    request handled ──► TranslatePendingMiddleware ──► NodeTranslator::translatePending()
                                                             │  one HTML document per (workspace, source, target)
-                                                            ├─► Supertext SDK translateTexts() (POST → poll → GET → DELETE)
+                                                            ├─► bundled Supertext SDK translateTexts() (POST → poll → GET → DELETE)
                                                             └─► SetNodeProperties per node (as the editor)
 ```
 
@@ -23,7 +23,7 @@ Neos UI "Create and copy"  ──►  N × CreateNodeVariant   (one per page/con
 | `Service\NodeTranslator` | Groups the queue by workspace, source and target dimension space point; adds tethered descendants (e.g. a page's `main` collection, created by Neos with the parent without own commands); sends all fields as keyed texts to the SDK's `translateTexts()` (one document; the SDK splits only above ~900k characters); writes results with `SetNodeProperties`; rebuilds `uriPathSegment` of documents from the translated title (`NodeUriPathSegmentGenerator`). Failures are logged and leave the variants as untranslated copies. |
 | `Service\PropertySelector` | Which properties are translated, from the node type: string properties that are inline-editable (HTML) or use a configured Inspector text/rich-text editor; `options.supertext.translate` overrides; `excludedProperties`. |
 | `Service\LanguageResolver` | Dimension value → Supertext code/politeness (`languages` setting, see *Language codes*); skips same-language variants (`en_US` → `en_UK`). |
-| `Api\SupertextClientFactory` | Creates the SDK's `Supertext\Sdk\Client` from the settings (key, endpoint, poll interval and timeout, User-Agent `Neos-Supertext-Translation/<version>`). |
+| `Api\SupertextClientFactory` | Creates the SDK's `Supertext\NeosTranslation\Sdk\Client` from the settings (key, endpoint, poll interval and timeout, User-Agent `Neos-Supertext-Translation/<version>`). |
 | `Api\GuzzleHttpTransport` | The SDK's `HttpTransport` over Guzzle (a Neos dependency), so ext-curl isn't required. |
 | `Command\SupertextCommandController` | `supertext:translate` (what *Create and copy* does, plus `--subpages`) and `supertext:check` (prints the package version from `Configuration\PackageVersion` first). Runs without authorization checks. |
 | `Configuration\Settings` | Typed settings; `SUPERTEXT_API_KEY` / `SUPERTEXT_API_ENDPOINT` win. |
@@ -35,9 +35,12 @@ Rich text (inline-editable/RichTextEditor properties) is sent as one `data-st-id
 
 ## Supertext API protocol
 
-The package talks to Supertext through the official **Supertext SDK for PHP** ([`supertext/supertext-sdk`](https://github.com/Supertext/Supertext-API-SDK-and-Guide/tree/main/sdk/php), MIT, no dependencies). The SDK implements the protocol below, the HTML packing (one `data-st-id` element per property), the language code rules, the 429 retries and stable error codes (`SupertextException::$errorCode`); it is tested against the shared test vectors of all Supertext SDKs. Error messages (English) come from the SDK and end up in the log and the `X-Supertext-Error` header.
+The package talks to Supertext through the official **Supertext SDK for PHP** ([Supertext-API-SDK-and-Guide](https://github.com/Supertext/Supertext-API-SDK-and-Guide/tree/main/sdk/php), MIT). The SDK implements the protocol below, the HTML packing (one `data-st-id` element per property), the language code rules, the 429 retries and stable error codes (`SupertextException::$errorCode`); it is tested against the shared test vectors of all Supertext SDKs. Error messages (English) come from the SDK and end up in the log and the `X-Supertext-Error` header.
 
-The SDK is not on Packagist yet: `composer.json` requires `supertext/supertext-sdk: ^0.1 || dev-main` and lists the SDK repository as a VCS repository (`no-api: true`, so Composer clones it with git instead of using the GitHub API); projects and the demo add the same repository. Once the SDK is on Packagist, drop the repository entries and the `dev-main` alternative.
+**Bundled copy:** the package ships the SDK in `lib/supertext-sdk/` (sources, `LICENSE`, `COMMIT` with the SDK commit, a short README), with the namespace changed from `Supertext\Sdk` to `Supertext\NeosTranslation\Sdk` and autoloaded by the package's `composer.json`. Sites install only the package; another package that requires `supertext/supertext-sdk` itself can't clash with it. This stays so after the SDK is on Packagist. `Configuration/Settings.yaml` excludes the copy from Flow's object framework (`Neos.Flow.object.excludeClasses`), so Flow doesn't reflect or proxy it.
+
+- Update it with `scripts/vendor-sdk.sh [commit-or-branch]` (default `main`; `SDK_DIR=<clone>` uses a local clone), run the tests, and commit with a CHANGELOG entry.
+- Never edit the copy: fix the SDK in its own repository, then re-run the script. PHPStan analyses `Classes/` only.
 
 AI file translation API v1, the same as the WordPress plugin and TYPO3 extension:
 
@@ -89,11 +92,11 @@ With PHP's built-in server, use a router that serves existing files and sets `SC
 
 ```bash
 php Tests/PackageVersionTest.php # version helper (Composer InstalledVersions), no Neos needed
-php Tests/SdkTest.php            # Guzzle transport + SDK round trip (mocked HTTP), dimension values → codes, error codes;
-                                 # needs vendor/ or demo/Packages/Libraries (composer install --working-dir=demo)
+php Tests/SdkTest.php            # Guzzle transport + bundled SDK round trip (mocked HTTP), dimension values → codes, error codes;
+                                 # needs Guzzle from vendor/ or demo/Packages/Libraries (composer install --working-dir=demo)
 ```
 
-CI (`.github/workflows/ci.yml`) lints all PHP files on 8.2, 8.3 and 8.4, runs the version test and syntax-checks the demo entrypoint on every push and pull request; the *PHPStan* job installs the demo's locked Neos and the SDK, runs `Tests/SdkTest.php` and PHPStan (see *Code quality and security checks*).
+CI (`.github/workflows/ci.yml`) lints all PHP files on 8.2, 8.3 and 8.4, runs the version test and syntax-checks the demo entrypoint on every push and pull request; the *PHPStan* job installs the demo's locked Neos, runs `Tests/SdkTest.php` and PHPStan (see *Code quality and security checks*).
 
 End to end (manual, before a release): fresh demo, stand-in with `STAND_IN_PREFIX=1`, then (a) `supertext:translate` into French and (b) *Create and copy* into Italian in the UI as the editor; every visible text must be translated, the workspace must show the changes, and publishing must work. `Tests/Docs/screenshots.mjs` runs (b) automatically.
 

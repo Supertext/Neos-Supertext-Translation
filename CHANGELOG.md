@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Changed: the package now talks to Supertext through the official [Supertext SDK for PHP](https://github.com/Supertext/Supertext-API-SDK-and-Guide) (`supertext/supertext-sdk`) instead of its own API client, HTML packer and language code rules. Same behaviour; error messages are the SDK's (e.g. *Supertext rejected the API key*), with new ones for rejected language pairs and incomplete translations. Installing from GitHub now also needs the SDK repository (see the installation guide).
+- Changed: the package now talks to Supertext through the official [Supertext SDK for PHP](https://github.com/Supertext/Supertext-API-SDK-and-Guide) instead of its own API client, HTML packer and language code rules. The SDK is bundled in the package (`lib/supertext-sdk`), so there is nothing extra to install. Same behaviour; error messages are the SDK's (e.g. *Supertext rejected the API key*), with new ones for rejected language pairs and incomplete translations.
 - Fixed: target languages without a region (e.g. a dimension value `de` without a `code` setting) are now sent to Supertext as a regional code (`de-DE`, `fr-FR`, `it-IT`, …), which Supertext requires; configured codes are normalized (`de_ch` → `de-CH`). The source is always sent without region, also when its `code` setting has one.
 - Docs: interface languages. The package has no screens of its own; editors use Neos' dialogs, which follow their interface language (English, German, French, Italian and more). CLI output stays English.
 - `supertext:check` prints the package version first (e.g. `Supertext Translation for Neos 0.1.0`), read from Composer at runtime.

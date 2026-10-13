@@ -27,7 +27,7 @@ Which fields are translated is derived from the node types: inline-editable text
 
 You need a Supertext account ([create one](https://www.supertext.com/person/en/account/signin)) and an API key ([supertext.com → Integrations → API](https://www.supertext.com/en/integrations/api), requires the Admin role).
 
-Quick start (not on Packagist yet — add the GitHub repositories of the package and the Supertext SDK first, see the installation guide):
+Quick start (not on Packagist yet — add the GitHub repository first, see the installation guide):
 
 ```bash
 composer require supertext/neos-translation

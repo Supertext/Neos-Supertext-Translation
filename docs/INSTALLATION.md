@@ -16,12 +16,11 @@ For administrators setting up the package on a Neos site.
 
 ## 1. Add the package
 
-The package is not on Packagist yet, and neither is the [Supertext SDK](https://github.com/Supertext/Supertext-API-SDK-and-Guide) it uses to talk to Supertext. Add both GitHub repositories to your project's `composer.json`, then require them:
+The package is not on Packagist yet. Add the GitHub repository to your project's `composer.json`, then require it (it brings the [Supertext SDK](https://github.com/Supertext/Supertext-API-SDK-and-Guide) it uses with it; there is nothing else to install):
 
 ```bash
 composer config repositories.supertext-neos vcs https://github.com/Supertext/Neos-Supertext-Translation
-composer config repositories.supertext-sdk '{"type": "vcs", "url": "https://github.com/Supertext/Supertext-API-SDK-and-Guide", "no-api": true}'
-composer require supertext/supertext-sdk:dev-main supertext/neos-translation:dev-main
+composer require supertext/neos-translation:dev-main
 ./flow flow:cache:flush
 ```
 
@@ -144,14 +143,14 @@ Which properties are translated by default: `string` properties that are inline-
 ## Updating
 
 ```bash
-composer update supertext/neos-translation supertext/supertext-sdk
+composer update supertext/neos-translation
 ./flow flow:cache:flush
 ```
 
 ## Uninstalling
 
 ```bash
-composer remove supertext/neos-translation supertext/supertext-sdk
+composer remove supertext/neos-translation
 ./flow flow:cache:flush
 ```
 

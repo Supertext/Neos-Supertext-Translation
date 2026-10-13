@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Supertext\NeosTranslation\Service;
 
 use Neos\Flow\Annotations as Flow;
-use Supertext\Sdk\LanguageCodes;
+use Supertext\NeosTranslation\Sdk\LanguageCodes;
 use Supertext\NeosTranslation\Configuration\Settings;
 
 /**

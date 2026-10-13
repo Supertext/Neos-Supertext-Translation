@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Supertext\NeosTranslation\Api;
 
 use GuzzleHttp\Client;
-use Supertext\Sdk\Http\HttpRequest;
-use Supertext\Sdk\Http\HttpResponse;
-use Supertext\Sdk\Http\HttpTransport;
-use Supertext\Sdk\Http\TransportException;
+use Supertext\NeosTranslation\Sdk\Http\HttpRequest;
+use Supertext\NeosTranslation\Sdk\Http\HttpResponse;
+use Supertext\NeosTranslation\Sdk\Http\HttpTransport;
+use Supertext\NeosTranslation\Sdk\Http\TransportException;
 
 /**
  * Sends the Supertext SDK's requests with Guzzle (already a Neos dependency), so
