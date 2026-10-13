@@ -16,11 +16,11 @@ use Neos\Flow\Annotations as Flow;
 use Neos\Neos\Domain\Service\NodeTypeNameFactory;
 use Neos\Neos\Utility\NodeUriPathSegmentGenerator;
 use Psr\Log\LoggerInterface;
-use Supertext\NeosTranslation\Api\HtmlDocument;
-use Supertext\NeosTranslation\Api\SupertextClient;
+use Supertext\NeosTranslation\Api\SupertextClientFactory;
 use Supertext\NeosTranslation\Configuration\Settings;
 use Supertext\NeosTranslation\Domain\PendingTranslation;
 use Supertext\NeosTranslation\Domain\PendingTranslations;
+use Supertext\Sdk\Segment;
 
 /**
  * Translates all pending node variants: one Supertext document per
@@ -37,7 +37,7 @@ class NodeTranslator
     protected ContentRepositoryRegistry $contentRepositoryRegistry;
 
     #[Flow\Inject]
-    protected SupertextClient $client;
+    protected SupertextClientFactory $clientFactory;
 
     #[Flow\Inject]
     protected PropertySelector $propertySelector;
@@ -110,30 +110,24 @@ class NodeTranslator
                         continue;
                     }
                     $map[] = [$nodeId, $property];
-                    $segments[] = ['text' => $value, 'html' => $isHtml];
+                    $segments[] = new Segment($value, $isHtml);
                 }
             }
             if ($segments === []) {
                 return $result;
             }
 
-            $translated = [];
-            foreach ($this->chunk($segments) as $offset => $chunk) {
-                $html = $this->client->translateDocument(
-                    HtmlDocument::build($chunk),
-                    $this->languageResolver->targetCode($targetLanguage),
-                    $this->languageResolver->sourceCode($sourceLanguage),
-                    $this->languageResolver->politeness($targetLanguage),
-                );
-                $isHtml = array_map(static fn(array $s): bool => $s['html'], $chunk);
-                foreach (HtmlDocument::parse($html, $isHtml) as $id => $text) {
-                    $translated[$offset + $id] = $text;
-                }
-            }
+            // One document per batch; the SDK splits only above ~900k characters.
+            $translated = $this->clientFactory->create()->translateTexts(
+                $segments,
+                $this->languageResolver->targetCode($targetLanguage),
+                $this->languageResolver->sourceCode($sourceLanguage),
+                $this->languageResolver->politeness($targetLanguage),
+            );
 
             $values = [];
             foreach ($map as $index => [$nodeId, $property]) {
-                if (isset($translated[$index]) && $translated[$index] !== '') {
+                if (isset($translated[$index]) && trim($translated[$index]) !== '') {
                     $values[$nodeId][$property] = $translated[$index];
                 }
             }
@@ -200,32 +194,5 @@ class NodeTranslator
     {
         return $contentRepository->getNodeTypeManager()->getNodeType($node->nodeTypeName)
             ?->isOfType(NodeTypeNameFactory::NAME_DOCUMENT) ?? false;
-    }
-
-    /**
-     * Splits segments into documents below Supertext's size limit.
-     *
-     * @param list<array{text: string, html: bool}> $segments
-     * @return array<int, array<int, array{text: string, html: bool}>> first segment index => segments
-     */
-    private function chunk(array $segments): array
-    {
-        $chunks = [];
-        $start = 0;
-        $size = 0;
-        $current = [];
-        foreach ($segments as $index => $segment) {
-            $length = mb_strlen($segment['text']) + 40;
-            if ($current !== [] && $size + $length > SupertextClient::MAX_DOCUMENT_CHARACTERS) {
-                $chunks[$start] = $current;
-                $start = $index;
-                $size = 0;
-                $current = [];
-            }
-            $current[$index - $start] = $segment;
-            $size += $length;
-        }
-        $chunks[$start] = $current;
-        return $chunks;
     }
 }

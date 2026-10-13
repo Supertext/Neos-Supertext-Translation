@@ -16,11 +16,12 @@ For administrators setting up the package on a Neos site.
 
 ## 1. Add the package
 
-The package is not on Packagist yet. Add the GitHub repository to your project's `composer.json`, then require it:
+The package is not on Packagist yet, and neither is the [Supertext SDK](https://github.com/Supertext/Supertext-API-SDK-and-Guide) it uses to talk to Supertext. Add both GitHub repositories to your project's `composer.json`, then require them:
 
 ```bash
 composer config repositories.supertext-neos vcs https://github.com/Supertext/Neos-Supertext-Translation
-composer require supertext/neos-translation:dev-main
+composer config repositories.supertext-sdk '{"type": "vcs", "url": "https://github.com/Supertext/Supertext-API-SDK-and-Guide", "no-api": true}'
+composer require supertext/supertext-sdk:dev-main supertext/neos-translation:dev-main
 ./flow flow:cache:flush
 ```
 
@@ -143,14 +144,14 @@ Which properties are translated by default: `string` properties that are inline-
 ## Updating
 
 ```bash
-composer update supertext/neos-translation
+composer update supertext/neos-translation supertext/supertext-sdk
 ./flow flow:cache:flush
 ```
 
 ## Uninstalling
 
 ```bash
-composer remove supertext/neos-translation
+composer remove supertext/neos-translation supertext/supertext-sdk
 ./flow flow:cache:flush
 ```
 
@@ -161,9 +162,12 @@ Translations already made stay in place; they are ordinary Neos content.
 | Symptom | Cause / fix |
 | --- | --- |
 | New language pages stay in the source language | Look in `Data/Logs/System.log` (`System_Development.log` in Development context) for lines starting with `Supertext:`. The HTTP response of the "create" request also carries an `X-Supertext-Error` header. |
-| `No Supertext API key configured` | Set `SUPERTEXT_API_KEY` for the web server (e.g. Apache `SetEnv`, container variables) and the CLI, or the `apiKey` setting. No key yet: see *2. Set the API key*. `./flow supertext:check` tests it. |
-| `Authentication failed` | Wrong or revoked key. Generate a new one at [supertext.com → Integrations → API](https://www.supertext.com/en/integrations/api) (Admin role) and paste it again; the `Supertext-Auth-Key ` prefix is optional. |
+| `No Supertext API key is configured` | Set `SUPERTEXT_API_KEY` for the web server (e.g. Apache `SetEnv`, container variables) and the CLI, or the `apiKey` setting. No key yet: see *2. Set the API key*. `./flow supertext:check` tests it. |
+| `Supertext rejected the API key` | Wrong or revoked key. Generate a new one at [supertext.com → Integrations → API](https://www.supertext.com/en/integrations/api) (Admin role) and paste it again; the `Supertext-Auth-Key ` prefix is optional. |
 | `Too many requests` | Supertext's per-second limit; the package retries automatically (up to 4 times). Try again shortly if it persists. |
+| `Supertext does not support this language pair` | Check the dimension value and its `code` setting: the target needs a region Supertext supports (e.g. `de-CH`). |
+| `The translation from Supertext was empty or incomplete` | Supertext answered without some of the texts. Create the language version again; if it persists, send the log line to Supertext support. |
+| `Could not reach Supertext` | The server can't make outbound HTTPS calls to the endpoint; check firewall and proxy (Guzzle honours `HTTPS_PROXY`). |
 | `Timed out waiting for the Supertext translation` | Very long pages; raise `pollTimeout` (and PHP's `max_execution_time` / proxy timeouts accordingly). |
 | "Root Node Aggregates cannot be varied" when creating a page in a new language | The language was added after the content was imported. Extend the root node to it (see *Languages*). |
 | A field isn't translated | Check its property type and editor (see *All settings*), or force it with `options.supertext.translate: true`. |

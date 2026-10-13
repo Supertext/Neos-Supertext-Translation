@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "5f5ccd853fbc13b38442d5e4bc4aea4a",
+    "content-hash": "4121cec016e41351d7667a67b5079368",
     "packages": [
         {
             "name": "behat/transliterator",
@@ -7575,14 +7575,15 @@
             "dist": {
                 "type": "path",
                 "url": "./DistributionPackages/Supertext.NeosTranslation",
-                "reference": "9f76d4945b320f13905fbf5ba219137294fc00b2"
+                "reference": "316a7b74450c4b199fa58ccf12791ac914ecb614"
             },
             "require": {
                 "ext-dom": "*",
                 "guzzlehttp/guzzle": "^7.4",
                 "neos/contentrepository-core": "^9.0",
                 "neos/neos": "^9.0",
-                "php": "^8.2"
+                "php": "^8.2",
+                "supertext/supertext-sdk": "^0.1 || dev-main"
             },
             "type": "neos-package",
             "extra": {
@@ -7609,6 +7610,77 @@
             "transport-options": {
                 "relative": true
             }
+        },
+        {
+            "name": "supertext/supertext-sdk",
+            "version": "dev-main",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/Supertext/Supertext-API-SDK-and-Guide",
+                "reference": "6468cf62630cf37a966ccadec94f65df39fb8a37"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/Supertext/Supertext-API-SDK-and-Guide/zipball/6468cf62630cf37a966ccadec94f65df39fb8a37",
+                "reference": "6468cf62630cf37a966ccadec94f65df39fb8a37",
+                "shasum": ""
+            },
+            "require": {
+                "ext-json": "*",
+                "php": ">=8.1"
+            },
+            "require-dev": {
+                "phpstan/phpstan": "^2.1",
+                "phpunit/phpunit": "^10.5 || ^11.0"
+            },
+            "suggest": {
+                "ext-curl": "Needed only for the built-in CurlTransport. Not needed when you pass your own HttpTransport (e.g. wrapping Symfony HttpClient or Guzzle)."
+            },
+            "default-branch": true,
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Supertext\\Sdk\\": "sdk/php/src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "Supertext\\Sdk\\Tests\\": "sdk/php/tests/"
+                }
+            },
+            "scripts": {
+                "test": [
+                    "phpunit -c sdk/php/phpunit.xml.dist"
+                ],
+                "phpstan": [
+                    "phpstan analyse -c sdk/php/phpstan.neon"
+                ]
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Supertext AG",
+                    "homepage": "https://www.supertext.com"
+                }
+            ],
+            "description": "Client for the Supertext AI translation API: translate HTML and texts, with language codes, rate-limit retries and HTML packing handled for you.",
+            "homepage": "https://github.com/Supertext/Supertext-API-SDK-and-Guide",
+            "keywords": [
+                "ai",
+                "api",
+                "localization",
+                "sdk",
+                "supertext",
+                "translation"
+            ],
+            "support": {
+                "issues": "https://github.com/Supertext/Supertext-API-SDK-and-Guide/issues",
+                "source": "https://github.com/Supertext/Supertext-API-SDK-and-Guide",
+                "security": "https://github.com/Supertext/Supertext-API-SDK-and-Guide/security/policy"
+            },
+            "time": "2026-10-11T14:45:30+00:00"
         },
         {
             "name": "symfony/console",
@@ -9423,7 +9495,8 @@
     "minimum-stability": "stable",
     "stability-flags": {
         "supertext/neos-demo": 20,
-        "supertext/neos-translation": 20
+        "supertext/neos-translation": 20,
+        "supertext/supertext-sdk": 20
     },
     "prefer-stable": false,
     "prefer-lowest": false,

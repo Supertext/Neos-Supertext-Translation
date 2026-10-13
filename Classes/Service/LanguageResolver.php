@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace Supertext\NeosTranslation\Service;
 
 use Neos\Flow\Annotations as Flow;
-use Supertext\NeosTranslation\Api\LanguageCodes;
+use Supertext\Sdk\LanguageCodes;
 use Supertext\NeosTranslation\Configuration\Settings;
 
 /**
  * Maps language dimension values ("de", "en_US") to Supertext language codes:
  * regional targets ("de" => "de-DE", "en_US" => "en-US", or the configured code)
- * and bare sources ("en_US" => "en"). Rules in Api\LanguageCodes.
+ * and bare sources ("en_US" => "en"). Rules in the Supertext SDK's LanguageCodes.
  */
 #[Flow\Scope('singleton')]
 class LanguageResolver
@@ -38,13 +38,13 @@ class LanguageResolver
      */
     public function targetCode(string $dimensionValue): string
     {
-        return LanguageCodes::target($dimensionValue, $this->configuredCode($dimensionValue));
+        return LanguageCodes::target($this->configuredCode($dimensionValue) ?: $dimensionValue);
     }
 
     /** Supertext source code: the bare language ("en_US" => "en"; a configured "de-CH" => "de"). */
     public function sourceCode(string $dimensionValue): string
     {
-        return LanguageCodes::source($dimensionValue, $this->configuredCode($dimensionValue));
+        return LanguageCodes::source($this->configuredCode($dimensionValue) ?: $dimensionValue);
     }
 
     /** "more", "less" or "default" */

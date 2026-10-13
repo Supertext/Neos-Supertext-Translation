@@ -25,12 +25,8 @@ jobs:
           coverage: none
       - name: Lint
         run: find . -name '*.php' -not -path './vendor/*' -not -path './Packages/*' -print0 | xargs -0 -n1 php -l
-      - name: HTML round-trip test
-        run: php Tests/HtmlDocumentTest.php
       - name: Version helper test
         run: php Tests/PackageVersionTest.php
-      - name: Language codes test
-        run: php Tests/LanguageCodesTest.php
       - name: Demo entrypoint syntax
         run: sh -n demo/entrypoint.sh
 
@@ -54,5 +50,7 @@ jobs:
           mkdir -p demo/DistributionPackages/Supertext.NeosTranslation
           cp composer.json demo/DistributionPackages/Supertext.NeosTranslation/
           composer install --working-dir=demo --no-dev --no-scripts --no-interaction --no-progress
+      - name: Supertext SDK glue test
+        run: php Tests/SdkTest.php
       - name: PHPStan
         run: phpstan analyse --no-progress --error-format=github --autoload-file=demo/Packages/Libraries/autoload.php

@@ -17,12 +17,18 @@
         "neos/seo": "~4.1",
         "neos/demo": "~9.1.0",
         "supertext/neos-translation": "@dev",
-        "supertext/neos-demo": "@dev"
+        "supertext/neos-demo": "@dev",
+        "supertext/supertext-sdk": "dev-main"
     },
     "repositories": {
         "distributionPackages": {
             "type": "path",
             "url": "./DistributionPackages/*"
+        },
+        "supertext-sdk": {
+            "type": "vcs",
+            "url": "https://github.com/Supertext/Supertext-API-SDK-and-Guide",
+            "no-api": true
         }
     },
     "scripts": {
