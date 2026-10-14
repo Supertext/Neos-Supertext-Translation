@@ -22,10 +22,16 @@ Neos UI "Create and copy"  ──►  N × CreateNodeVariant   (one per page/con
 | `Http\TranslatePendingMiddleware` | Flow HTTP middleware, `before dispatch`. After the request was handled it translates the queue and adds `X-Supertext-Translated: <lang>=<fields>` or `X-Supertext-Error` to the response. The UI reloads the page afterwards, so the editor sees the translation. |
 | `Service\NodeTranslator` | Groups the queue by workspace, source and target dimension space point; adds tethered descendants (e.g. a page's `main` collection, created by Neos with the parent without own commands); sends all fields as keyed texts to the SDK's `translateTexts()` (one document; the SDK splits only above ~900k characters); writes results with `SetNodeProperties`; rebuilds `uriPathSegment` of documents from the translated title (`NodeUriPathSegmentGenerator`). Failures are logged and leave the variants as untranslated copies. |
 | `Service\PropertySelector` | Which properties are translated, from the node type: string properties that are inline-editable (HTML) or use a configured Inspector text/rich-text editor; `options.supertext.translate` overrides; `excludedProperties`. |
-| `Service\LanguageResolver` | Dimension value → Supertext code/politeness (`languages` setting, see *Language codes*); skips same-language variants (`en_US` → `en_UK`). |
-| `Api\SupertextClientFactory` | Creates the SDK's `Supertext\NeosTranslation\Sdk\Client` from the settings (key, endpoint, poll interval and timeout, User-Agent `Neos-Supertext-Translation/<version>`). |
+| `Service\LanguageResolver` | Dimension value → Supertext code/politeness with the SDK's `Languages` and the `languages.*.code` mapping (see *Language codes*); skips same-language variants (`en_US` → `en_UK`). |
+| `Service\ErrorMessages` | English messages for administrators: the SDK's, except `unsupported_language`/`unsupported_feature` (naming the setting to change) and the API key errors (with the account and API key links). |
+| `Http\PingMiddleware` | Public `GET …/supertext/ping` for the Commando Center, `before session` (no session cookie, no routing, no page cache); answers `InstallationReporter::pingResponse()` as it is; other paths and methods pass through. |
+| `Reporting\Reporting` | Plain-PHP glue to the SDK's `InstallationReporter`: plugin/system names, callback URL, site URL fallback, state load/save, the actions (`onRequest`, `authenticationFailed`, `testConnection`, check + `check` report). Never throws. Unit-tested without Neos. |
+| `Reporting\ReportingService` | Flow wiring: the `versionReports` setting with `SUPERTEXT_VERSION_REPORTS`, the site URL Neos knows, the Neos version (`InstalledVersions` of `neos/neos`), Guzzle, debug logging. |
+| `Reporting\CacheStateStorage` | The reporter's state and the remembered site URL in the persistent Flow cache `Supertext_NeosTranslation_State` (`Configuration/Caches.yaml`, read through the `CacheManager`). |
+| `Reporting\KeyCheckMessages` | The Commando Center's key-check messages (English) with the bare Supertext URLs. |
+| `Api\SupertextClientFactory` | Creates the SDK's `Supertext\NeosTranslation\Sdk\V1\Client` from the settings (key, endpoint, poll interval and timeout, User-Agent `Neos-Supertext-Translation/<version>`). |
 | `Api\GuzzleHttpTransport` | The SDK's `HttpTransport` over Guzzle (a Neos dependency), so ext-curl isn't required. |
-| `Command\SupertextCommandController` | `supertext:translate` (what *Create and copy* does, plus `--subpages`) and `supertext:check` (prints the package version from `Configuration\PackageVersion` first). Runs without authorization checks. |
+| `Command\SupertextCommandController` | `supertext:translate` (what *Create and copy* does, plus `--subpages`; runs `onRequest` for the version reports) and `supertext:check` (package version from `Configuration\PackageVersion`, the language dimension values with their Supertext codes and tone warnings, the API key check with its time, and a `check` report). Runs without authorization checks. |
 | `Configuration\Settings` | Typed settings; `SUPERTEXT_API_KEY` / `SUPERTEXT_API_ENDPOINT` win. |
 | `Configuration\PackageVersion` | Installed package version via `Composer\InstalledVersions::getPrettyVersion('supertext/neos-translation')`, `unknown` if Composer can't tell. No hardcoded copy. |
 
@@ -33,18 +39,36 @@ Writes go through `ContentRepository::handle()`, so they get history, workspace 
 
 Rich text (inline-editable/RichTextEditor properties) is sent as one `data-st-id` element per property, with the CKEditor markup inside (paragraphs, inline `<strong>`, `<a href>` …), per the shared rule in `CLAUDE.md`.
 
+## Version reports, API key check and ping (Commando Center)
+
+Every Supertext plugin reports to the Supertext Commando Center (Commando-Center-Supertext-Translation → `docs/DEVELOPER.md` → *Report protocol*); the protocol is the SDK's `V1\InstallationReporter` (see the SDK's README and `spec/reporting.json`). Neos has no settings form, so there is no `afterSettingsSaved`:
+
+| When | Reporter call | Where |
+| --- | --- | --- |
+| GET requests to the Neos back end (`/neos…`) and requests that translated | `onRequest` (checks the key when its fingerprint changed; reports `installed`/`upgraded`/`api_key_check` when due) | `TranslatePendingMiddleware`, after the request was handled; also remembers the request's base URI as site URL for the CLI |
+| `supertext:translate` | `onRequest` | `SupertextCommandController` |
+| A translation got 401/403 | `authenticationFailed` | `NodeTranslator` |
+| `supertext:check` | key check with reports disabled (`testConnection`), then `reportCheck` | `Reporting::checkAndReport()` |
+
+- Runs synchronously (Flow middlewares have no after-response hook), but is usually a cache read: Supertext is only called when the key changed (10 s max), the center only when something is due (3 s max), and a failed report blocks further attempts for an hour.
+- **Setting:** `versionReports` (default `true`) via `InstallationReporter::reportsEnabled()`, so `SUPERTEXT_VERSION_REPORTS` wins. Off: nothing is sent, the ping answers 404, the key check still runs.
+- **Options:** plugin `Neos-Supertext-Translation` (GitHub repository name), version from `PackageVersion` (Composer), system `Neos` with the `neos/neos` version, runtime PHP, callback `<site URL>/supertext/ping`.
+- **Site URL:** `Neos.Flow.http.baseUri`, else the default site's primary domain, else the base URI of the last back-end request (stored). Without any, the reporter runs with reports disabled (key check only).
+- **State:** `ReporterState` as JSON under `reporter`, the remembered site URL under `siteUrl`, in the persistent cache `Supertext_NeosTranslation_State`. The key's fingerprint stays there; the key itself is never stored, logged or reported. Storage errors are logged at debug level and ignored.
+- `SUPERTEXT_REPORT_URL` points reports elsewhere (tests, the stand-in's `POST /report`).
+
 ## Supertext API protocol
 
-The package talks to Supertext through the official **Supertext SDK for PHP** ([Supertext-API-SDK-and-Guide](https://github.com/Supertext/Supertext-API-SDK-and-Guide/tree/main/sdk/php), MIT). The SDK implements the protocol below, the HTML packing (one `data-st-id` element per property), the language code rules, the 429 retries and stable error codes (`SupertextException::$errorCode`); it is tested against the shared test vectors of all Supertext SDKs. Error messages (English) come from the SDK and end up in the log and the `X-Supertext-Error` header.
+The package talks to Supertext through the official **Supertext SDK for PHP** ([Supertext-API-SDK-and-Guide](https://github.com/Supertext/Supertext-API-SDK-and-Guide/tree/main/sdk/php), MIT). The SDK implements the protocol below, the HTML packing (one `data-st-id` element per property), the list of Supertext languages (`V1\Languages`), the API key check and the Commando Center reports, the 429 retries and stable error codes (`SupertextException::$errorCode`); it is tested against the shared test vectors of all Supertext SDKs. Error messages (English) come from the SDK and end up in the log and the `X-Supertext-Error` header.
 
-**Bundled copy:** the package ships the SDK in `lib/supertext-sdk/` (sources, `LICENSE`, `COMMIT` with the SDK commit, a short README), with the namespace changed from `Supertext\Sdk` to `Supertext\NeosTranslation\Sdk` and autoloaded by the package's `composer.json`. Sites install only the package; another package that requires `supertext/supertext-sdk` itself can't clash with it. This stays so after the SDK is on Packagist. `Configuration/Settings.yaml` limits Flow's object management to the package's own classes (`Neos.Flow.object.includeClasses`: everything under `Supertext\NeosTranslation\` except `Sdk\`). Without it Flow proxies the SDK's classes, and the proxies break the SDK's named constructor arguments (`Unknown named parameter $baseUrl`). The package's namespace must stay the **first** `psr-4` entry in `composer.json`: Flow derives the package key and install folder from it.
+**Bundled copy:** the package ships the SDK in `lib/supertext-sdk/` (sources, `LICENSE`, `COMMIT` with the SDK commit, a short README), with the namespace changed from `Supertext\Sdk` to `Supertext\NeosTranslation\Sdk` (API v1 classes in `Sdk\V1`, `src/V1/`; the HTTP transport in `Sdk\Http`) and autoloaded by the package's `composer.json`. Sites install only the package; another package that requires `supertext/supertext-sdk` itself can't clash with it. This stays so after the SDK is on Packagist. `Configuration/Settings.yaml` limits Flow's object management to the package's own classes (`Neos.Flow.object.includeClasses`: everything under `Supertext\NeosTranslation\` except `Sdk\`). Without it Flow proxies the SDK's classes, and the proxies break the SDK's named constructor arguments (`Unknown named parameter $baseUrl`). The package's namespace must stay the **first** `psr-4` entry in `composer.json`: Flow derives the package key and install folder from it.
 
 - Update it with `scripts/vendor-sdk.sh [commit-or-branch]` (default `main`; `SDK_DIR=<clone>` uses a local clone), run the tests, and commit with a CHANGELOG entry.
 - Never edit the copy: fix the SDK in its own repository, then re-run the script. PHPStan analyses `Classes/` only.
 
 AI file translation API v1, the same as the WordPress plugin and TYPO3 extension:
 
-1. `POST translate/ai/file` — multipart: `file` (`content.html`, part `Content-Type: text/html` exactly), `target_lang` (regional code, `de-CH`), `source_lang` (bare language, `en`; see *Language codes*), optional `politeness` (`more`/`less`) → `{file_id}`
+1. `POST translate/ai/file` — multipart: `file` (`content.html`, part `Content-Type: text/html` exactly), `target_lang` (a Supertext code, `de-CH`, `es`), `source_lang` (bare language, `en`; see *Language codes*), optional `politeness` (`more`/`less`) → `{file_id}`
 2. `GET translate/ai/file/{id}/status` until `done` (`error`, `limit_exceeded`, `deleted` fail)
 3. `GET translate/ai/file/{id}/translation` → translated HTML
 4. `DELETE translate/ai/file/{id}` (files also expire after 24 h)
@@ -53,10 +77,13 @@ Header `Authorization: Supertext-Auth-Key <key>`; the SDK strips a pasted prefix
 
 ### Language codes
 
-Learned from the live API: the **source** is the bare language (`en`, `de`), the **target** a regional code (`de-DE`, `fr-CH`, `en-US`). Supertext rejects a bare target such as `de` with `INVALID_LANGUAGE_PAIR`, and a regional source too. The SDK's `LanguageCodes` applies the rule; `Service\LanguageResolver` feeds it the dimension values and the `languages` setting:
+Supertext accepts only the codes of `GET features` (the SDK's `V1\Languages::TARGETS` / `SOURCES`): targets are regional only for German, English, French, Italian and Portuguese (`de-CH`, `en-US`, `pt-BR`), have a script for Chinese and Serbian (`zh-Hans`, `sr-Latn`), a dialect for Swiss German (`gsw-u-sd-chzh`) and are **bare for all others** (`es`, `nl`, `sl`). Sources are bare. The old default regions (`es-ES`, `sl-SI`, `zh-CN`) are rejected by the live API, so nothing is guessed any more (SDK 0.2.0):
 
-- Source: the source dimension value (or its configured `code`) reduced to the language: `en_US` → `en`.
-- Target: the configured `code` if set, otherwise the dimension value. A code with a region keeps it, normalized (`en_US` / `en-us` → `en-US`; scripts and numeric regions stay: `zh-Hant`, `es-419`; variants and extensions are dropped: `de_DE_formal` → `de-DE`). A bare code gets a regional default: ar→ar-SA, bg→bg-BG, cs→cs-CZ, da→da-DK, de→de-DE, el→el-GR, en→en-US, es→es-ES, et→et-EE, fi→fi-FI, fr→fr-FR, hr→hr-HR, hu→hu-HU, it→it-IT, ja→ja-JP, ko→ko-KR, lt→lt-LT, lv→lv-LV, nb→nb-NO, nl→nl-NL, pl→pl-PL, pt→pt-PT, ro→ro-RO, ru→ru-RU, sk→sk-SK, sl→sl-SI, sr→sr-RS, sv→sv-SE, th→th-TH, tr→tr-TR, uk→uk-UA, vi→vi-VN, zh→zh-CN (same table as the other Supertext plugins). Unknown bare codes are sent unchanged, so Supertext's error names them. A language Supertext doesn't know at all comes back as HTTP 404 with `INVALID_LANGUAGE_PAIR`; the SDK reports it as `invalid_language_pair` with both codes, like a rejected pair.
+- `Configuration\Settings::getLanguageMapping()` builds one mapping, dimension value → code, from `languages.<value>.code`.
+- Target: `Languages::target($value, $mapping)`: the mapping wins (sent as it is, even a code the SDK doesn't list yet), else a value equal to a Supertext code apart from case and `_`/`-` (`en_US` → `en-US`), else `SupertextException` `unsupported_language` before anything is sent.
+- Source: `Languages::source($value, $mapping)`, same mapping: a mapped `de-CH` is sent as `de`, `en_US` as `en`.
+- Politeness is sent as configured; `Languages::supportsPoliteness()` false (e.g. `en-US`, `rm`) means Supertext answers `unsupported_feature`, and `supertext:check` warns beforehand (`LanguageResolver::politenessUnsupported()`).
+- `NodeTranslator` resolves both codes before calling the client; errors become `TranslationResult::$error` through `ErrorMessages`.
 - The API allows translating within one language (source `en`, target `en-GB`); this package still skips such variants on purpose (see `LanguageResolver::needsTranslation()`).
 
 The stand-in (`Tests/Docs/stand-in.mjs`) rejects bare targets and regional sources like the real API.
@@ -92,11 +119,12 @@ With PHP's built-in server, use a router that serves existing files and sets `SC
 
 ```bash
 php Tests/PackageVersionTest.php # version helper (Composer InstalledVersions), no Neos needed
-php Tests/SdkTest.php            # Guzzle transport + bundled SDK round trip (mocked HTTP), dimension values → codes, error codes;
+php Tests/ReportingTest.php      # version reports, key check, ping, state storage (fake transport and storage), no Neos needed
+php Tests/SdkTest.php            # Guzzle transport + bundled SDK round trip (mocked HTTP), language mapping/unmapped errors, error codes;
                                  # needs Guzzle from vendor/ or demo/Packages/Libraries (composer install --working-dir=demo)
 ```
 
-CI (`.github/workflows/ci.yml`) lints all PHP files on 8.2, 8.3 and 8.4, runs the version test and syntax-checks the demo entrypoint on every push and pull request; the *PHPStan* job installs the demo's locked Neos, runs `Tests/SdkTest.php` and PHPStan (see *Code quality and security checks*).
+CI (`.github/workflows/ci.yml`) lints all PHP files on 8.2, 8.3 and 8.4, runs the version and reporting tests and syntax-checks the demo entrypoint on every push and pull request; the *PHPStan* job installs the demo's locked Neos, runs `Tests/SdkTest.php` and PHPStan (see *Code quality and security checks*).
 
 End to end (manual, before a release): fresh demo, stand-in with `STAND_IN_PREFIX=1`, then (a) `supertext:translate` into French and (b) *Create and copy* into Italian in the UI as the editor; every visible text must be translated, the workspace must show the changes, and publishing must work. `Tests/Docs/screenshots.mjs` runs (b) automatically.
 
@@ -108,6 +136,7 @@ End to end (manual, before a release): fresh demo, stand-in with `STAND_IN_PREFI
 cd Tests/Docs && npm install
 node stand-in.mjs &                                       # no prefix: real samples, rest unchanged
 export SUPERTEXT_API_KEY=docs SUPERTEXT_API_ENDPOINT=http://127.0.0.1:8765/v1/   # for the Neos web server
+export SUPERTEXT_REPORT_URL=http://127.0.0.1:8765/report  # version reports go to the stand-in, never the live center
 # start the demo (fresh database), then:
 BASE_URL=http://127.0.0.1:8097 DEMO_EDITOR_EMAIL=… DEMO_EDITOR_PASSWORD=… DEMO_ADMIN_EMAIL=… DEMO_ADMIN_PASSWORD=… npm run screenshots
 ```
@@ -124,7 +153,7 @@ The public demo is a container built from `demo/Dockerfile`: Neos 9.1 with the o
 | --- | --- |
 | `Dockerfile` | `php:8.3-apache` + extensions (`pdo_mysql`, `intl`, `gd`, …), `composer install` from the lock file; the package is copied to `DistributionPackages/Supertext.NeosTranslation` |
 | `composer.json`, `composer.lock` | The demo project (Neos, Neos.Demo, both Supertext packages via a path repository). Keeps Flow's installer scripts — without them there is no `./flow` and no `Web/index.php`. |
-| `DistributionPackages/Supertext.NeosDemo` | Demo site package: French/Italian dimension values and URL segments, Supertext language codes (`de-CH`/`fr-CH`/`it-CH`, formal), trusted proxies, the root-node migration, and `demo:ensureaccounts` |
+| `DistributionPackages/Supertext.NeosDemo` | Demo site package: French/Italian dimension values and URL segments, the language mapping (`de-CH`/`fr-CH`/`it-CH`, formal; `en_UK` → `en-GB`; `en_US` needs none), trusted proxies, the root-node migration, and `demo:ensureaccounts` |
 | `Settings.yaml` | Database connection from `DB_*` |
 | `entrypoint.sh` | Keeps only Apache's prefork MPM, links `Data/Persistent` to the volume, waits for the database, runs `doctrine:migrate` + `cr:setup`; on first boot imports Neos.Demo and runs the root-node migration; every boot: `demo:ensureaccounts`, `resource:publish`, `flow:cache:warmup` |
 | `apache.conf`, `php.ini` | Web server and PHP settings |
@@ -149,6 +178,7 @@ Neos has no first-run "create admin" screen in this setup (`neos/neos-setup` is 
 | `DEMO_ADMIN_*`, `DEMO_EDITOR_*` | Demo accounts (above) |
 | `SUPERTEXT_API_KEY` | Supertext key |
 | `SUPERTEXT_API_ENDPOINT` | Optional, e.g. the staging API |
+| `SUPERTEXT_VERSION_REPORTS` | Optional; `0` turns the version reports off (default on) |
 | `PORT` | `8080`, matching the domain's target port |
 | `RAILWAY_DOCKERFILE_PATH` | `demo/Dockerfile` (the build context is the repo root) |
 
@@ -202,3 +232,5 @@ The package has no UI of its own today (it hooks into the content repository; ed
 - Only `string` properties are translated; value objects (e.g. structured link or list editors) are not.
 - Human (professional) translation orders are not supported yet (the WordPress plugin has them).
 - Tested on Neos 9.1 with the stand-in API; not yet against the live API.
+- Version reports run inside the back-end request (no after-response hook in Flow middlewares); a job queue would move them out.
+- The language mapping lives in Settings.yaml; there is no back-end module to pick codes from a list yet (`supertext:check` shows unmapped values).

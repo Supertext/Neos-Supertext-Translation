@@ -16,6 +16,10 @@ class Settings
     #[Flow\InjectConfiguration(package: 'Supertext.NeosTranslation')]
     protected array $settings = [];
 
+    /** @var array<string, mixed> */
+    #[Flow\InjectConfiguration(path: 'http', package: 'Neos.Flow')]
+    protected array $flowHttpSettings = [];
+
     public function isEnabled(): bool
     {
         return (bool)($this->settings['enabled'] ?? true);
@@ -59,6 +63,47 @@ class Settings
         $languages = $this->settings['languages'] ?? [];
         $config = is_array($languages) ? ($languages[$dimensionValue] ?? []) : [];
         return is_array($config) ? $config : [];
+    }
+
+    /**
+     * The language mapping: dimension value => Supertext code, from the `code` of each
+     * `languages` entry (blank codes left out). Used for targets and sources alike.
+     *
+     * @return array<string, string>
+     */
+    public function getLanguageMapping(): array
+    {
+        return self::mappingFrom($this->settings['languages'] ?? []);
+    }
+
+    /**
+     * @param mixed $languages the `languages` setting
+     * @return array<string, string>
+     */
+    public static function mappingFrom(mixed $languages): array
+    {
+        $mapping = [];
+        foreach (is_array($languages) ? $languages : [] as $dimensionValue => $config) {
+            $code = is_array($config) ? trim((string)($config['code'] ?? '')) : '';
+            if ($code !== '') {
+                $mapping[(string)$dimensionValue] = $code;
+            }
+        }
+        return $mapping;
+    }
+
+    /** The "Send version information to Supertext" setting; null when not set (default on). */
+    public function getVersionReports(): ?bool
+    {
+        $value = $this->settings['versionReports'] ?? null;
+        return $value === null ? null : (bool)$value;
+    }
+
+    /** The configured site URL (Neos.Flow.http.baseUri), if any. */
+    public function getFlowBaseUri(): ?string
+    {
+        $value = trim((string)($this->flowHttpSettings['baseUri'] ?? ''));
+        return $value !== '' ? $value : null;
     }
 
     /** @return list<string> */

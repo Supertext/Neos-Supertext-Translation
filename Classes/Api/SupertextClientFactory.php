@@ -7,13 +7,14 @@ namespace Supertext\NeosTranslation\Api;
 use Neos\Flow\Annotations as Flow;
 use Supertext\NeosTranslation\Configuration\PackageVersion;
 use Supertext\NeosTranslation\Configuration\Settings;
-use Supertext\NeosTranslation\Sdk\Client;
+use Supertext\NeosTranslation\Sdk\V1\Client;
 
 /**
  * Creates the Supertext SDK client (bundled in lib/supertext-sdk, namespace
  * Supertext\NeosTranslation\Sdk; see scripts/vendor-sdk.sh) from the
  * package settings. The SDK handles the protocol: authentication header, multipart
- * upload, 429 retries, polling, download, delete, HTML packing and language codes.
+ * upload, 429 retries, polling, download, delete and HTML packing (namespace V1 for
+ * API v1). Language codes are resolved before, by LanguageResolver.
  */
 #[Flow\Scope('singleton')]
 class SupertextClientFactory

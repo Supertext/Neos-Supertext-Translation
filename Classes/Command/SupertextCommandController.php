@@ -20,9 +20,15 @@ use Neos\Flow\Annotations as Flow;
 use Neos\Flow\Cli\CommandController;
 use Neos\Flow\Security\Context as SecurityContext;
 use Neos\Neos\Domain\Service\NodeTypeNameFactory;
-use Supertext\NeosTranslation\Api\SupertextClientFactory;
 use Supertext\NeosTranslation\Configuration\PackageVersion;
 use Supertext\NeosTranslation\Configuration\Settings;
+use Supertext\NeosTranslation\Reporting\KeyCheckMessages;
+use Supertext\NeosTranslation\Reporting\Reporting;
+use Supertext\NeosTranslation\Reporting\ReportingService;
+use Supertext\NeosTranslation\Sdk\V1\ApiKeyCheck;
+use Supertext\NeosTranslation\Sdk\V1\SupertextException;
+use Supertext\NeosTranslation\Service\ErrorMessages;
+use Supertext\NeosTranslation\Service\LanguageResolver;
 use Supertext\NeosTranslation\Service\NodeTranslator;
 
 /**
@@ -37,7 +43,10 @@ class SupertextCommandController extends CommandController
     protected NodeTranslator $nodeTranslator;
 
     #[Flow\Inject]
-    protected SupertextClientFactory $clientFactory;
+    protected LanguageResolver $languageResolver;
+
+    #[Flow\Inject]
+    protected ReportingService $reportingService;
 
     #[Flow\Inject]
     protected Settings $settings;
@@ -97,6 +106,7 @@ class SupertextCommandController extends CommandController
                 }
             }
             $this->outputLine('Created %d node variant(s) in %s; translating with Supertext...', [$created, $targetDsp->toJson()]);
+            $this->reportingService->onRequest();
 
             $failed = false;
             foreach ($this->nodeTranslator->translatePending() as $result) {
@@ -114,25 +124,83 @@ class SupertextCommandController extends CommandController
     }
 
     /**
-     * Show the package version and check the Supertext API key and endpoint
+     * Show the package version, the languages and the API key check; send a check report
+     *
+     * Checks the API key with Supertext (cost-free, nothing is translated), lists every
+     * language dimension value with the Supertext code it is translated with, and, while
+     * version reports are on, sends a "check" report to Supertext.
+     *
+     * @param string $contentRepository Content repository id
      */
-    public function checkCommand(): void
+    public function checkCommand(string $contentRepository = 'default'): void
     {
         $this->outputLine(PackageVersion::label());
         $this->outputLine('Endpoint: %s', [$this->settings->getBaseUrl()]);
-        if (!$this->clientFactory->hasApiKey()) {
-            $this->outputLine('<error>No API key configured (SUPERTEXT_API_KEY or Supertext.NeosTranslation.apiKey).</error>');
-            $this->outputLine('No Supertext account yet? Create one at https://www.supertext.com/person/en/account/signin');
-            $this->outputLine('Generate your API key at supertext.com > Integrations > API (requires the Admin role): https://www.supertext.com/en/integrations/api');
+
+        $languagesOk = $this->outputLanguages($contentRepository);
+
+        $reportsOn = $this->reportingService->isEnabled();
+        $siteUrl = $this->reportingService->siteUrl();
+        ['check' => $check, 'report' => $report] = $this->reportingService->check();
+        $keyOk = $check->status === ApiKeyCheck::OK;
+        $this->outputLine();
+        $this->outputLine(
+            $keyOk ? '<success>%s</success>' : '<error>%s</error>',
+            [KeyCheckMessages::for($check) . ' (' . $check->checkedAt . ')'],
+        );
+
+        $this->outputLine();
+        $this->outputLine('Version information to Supertext: %s', [$reportsOn ? 'on' : 'off (versionReports: false or SUPERTEXT_VERSION_REPORTS=0)']);
+        if ($reportsOn) {
+            $this->outputLine('Site URL: %s', [$siteUrl ?? 'unknown: set Neos.Flow.http.baseUri or a primary domain for the site, or open the Neos back end once']);
+            if ($siteUrl !== null) {
+                $this->outputLine('Ping endpoint: %s', [Reporting::callbackUrl($siteUrl)]);
+                $this->outputLine('Check report: %s', [$report?->sent ? 'sent' : 'not sent (Supertext can\'t be reached; nothing else is affected)']);
+            }
+        }
+
+        if (!$keyOk || !$languagesOk) {
             $this->quit(1);
         }
+    }
+
+    /** Lists the language dimension values and their Supertext codes; false when one has none. */
+    private function outputLanguages(string $contentRepository): bool
+    {
         try {
-            $this->clientFactory->create()->validateApiKey();
-            $this->outputLine('<success>API key accepted.</success>');
+            $cr = $this->contentRepositoryRegistry->get(ContentRepositoryId::fromString($contentRepository));
+            $dimension = $cr->getContentDimensionSource()->getDimension(new ContentDimensionId($this->settings->getLanguageDimension()));
         } catch (\Throwable $e) {
-            $this->outputLine('<error>%s</error>', [$e->getMessage()]);
-            $this->quit(1);
+            $this->outputLine('Languages: not available (%s)', [$e->getMessage()]);
+            return true;
         }
+        if ($dimension === null) {
+            $this->outputLine('Languages: no dimension "%s" in content repository "%s".', [$this->settings->getLanguageDimension(), $contentRepository]);
+            return true;
+        }
+        $ok = true;
+        $this->outputLine();
+        $this->outputLine('Languages (dimension value → Supertext code):');
+        foreach ($dimension->values as $value) {
+            $code = $this->languageResolver->targetCodeOrNull($value->value);
+            if ($code === null) {
+                $ok = false;
+                $this->outputLine('  <error>%s → not mapped</error>: %s', [$value->value, ErrorMessages::forException(
+                    new SupertextException(SupertextException::UNSUPPORTED_LANGUAGE, targetLang: $value->value)
+                )]);
+                continue;
+            }
+            $politeness = $this->languageResolver->politeness($value->value);
+            $line = sprintf('  %s → %s%s', $value->value, $code, $politeness !== 'default' ? ' (' . $politeness . ')' : '');
+            $this->outputLine($line);
+            if (LanguageResolver::politenessUnsupported($code, $politeness)) {
+                $this->outputLine('    <comment>%s</comment>', [ErrorMessages::forException(
+                    new SupertextException(SupertextException::UNSUPPORTED_FEATURE, feature: 'politeness'),
+                    $value->value,
+                )]);
+            }
+        }
+        return $ok;
     }
 
     /** Creates missing variants of the node, its missing parents and (optionally) its content. */

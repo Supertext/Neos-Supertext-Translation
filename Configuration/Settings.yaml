@@ -22,16 +22,32 @@ Supertext:
     # Name of the language dimension in the content repository.
     languageDimension: 'language'
 
-    # Optional per-language settings, keyed by dimension value. Without an entry the
-    # dimension value is sent with a region ("en_US" becomes "en-US", "de" becomes
-    # "de-DE"; see docs/DEVELOPER.md -> Language codes).
-    #   code:       target language code sent to Supertext, e.g. "de-CH"
-    #   politeness: "more" (formal: Sie/vous), "less" (informal: du/tu) or "default"
+    # Language mapping and per-language settings, keyed by dimension value. Supertext
+    # accepts only its own codes (see docs/INSTALLATION.md -> Supertext language codes):
+    # regional for German, English, French, Italian and Portuguese ("de-CH", "en-US",
+    # "pt-BR"), a script for Chinese and Serbian ("zh-Hans", "sr-Latn"), bare for the
+    # others ("es", "nl"). A dimension value that already is such a code (apart from case
+    # and "_"/"-", e.g. "en_US" or "es") needs no entry; any other ("de", "en_UK") must be
+    # mapped, or translating into or from it stops with "has no Supertext language yet".
+    # Nothing is guessed: whether "de" means Germany or Switzerland is your decision.
+    #   code:       Supertext code for this language, e.g. "de-CH" (used as source too: "de")
+    #   politeness: "more" (formal: Sie/vous), "less" (informal: du/tu) or "default";
+    #               only for targets that offer it (supertext:check warns otherwise)
     #   enabled:    false to never translate into this language
     languages: []
     #  de:
     #    code: 'de-CH'
     #    politeness: 'more'
+    #  en_UK:
+    #    code: 'en-GB'
+
+    # Send version information to Supertext: sends the site URL and the versions of this
+    # plugin, Neos and PHP to Supertext after an update and when the API key changes, so
+    # Supertext support can see which version you run. No content, no API key and no
+    # personal data are sent. The SUPERTEXT_VERSION_REPORTS environment variable (0/1)
+    # takes precedence. While on, the site answers GET /supertext/ping (see
+    # docs/INSTALLATION.md -> Version information).
+    versionReports: true
 
     # Which string properties are translated, by Inspector editor. Inline-editable
     # properties are always translated as HTML. Per property you can override with
@@ -58,12 +74,17 @@ Neos:
   Flow:
     object:
       # Object management for the package's own classes only: the bundled Supertext SDK
-      # (lib/supertext-sdk, Supertext\NeosTranslation\Sdk) is plain PHP. Flow would otherwise
-      # proxy its classes, and the proxies break the SDK's named constructor arguments.
+      # (lib/supertext-sdk, Supertext\NeosTranslation\Sdk) and Reporting\Reporting are plain
+      # PHP. Flow would otherwise proxy them, and the proxies break named constructor arguments.
       includeClasses:
-        'Supertext.NeosTranslation': ['^Supertext\\NeosTranslation\\(?!Sdk\\)']
+        'Supertext.NeosTranslation': ['^Supertext\\NeosTranslation\\(?!Sdk\\|Reporting\\Reporting$)']
     http:
       middlewares:
+        # Public GET /supertext/ping for the Supertext Commando Center (no session, no
+        # page cache); 404 while version reports are off.
+        'Supertext.NeosTranslation:Ping':
+          position: 'before session'
+          middleware: 'Supertext\NeosTranslation\Http\PingMiddleware'
         # Sends everything collected during the request to Supertext once the
         # request has been handled: one document per target language.
         'Supertext.NeosTranslation:TranslatePending':

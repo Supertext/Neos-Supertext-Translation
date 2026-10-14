@@ -7,7 +7,9 @@
  * with "[<target_lang>] " when STAND_IN_PREFIX=1, which makes untranslated text
  * easy to spot in tests. STAND_IN_DUMP=<dir> writes each submitted document's
  * untranslated segments to <dir>/<target_lang>.json (to extend the samples).
- * Listens on :8765 (PORT), accepts any API key.
+ * Listens on :8765 (PORT), accepts any API key. Also stands in for the Supertext
+ * Commando Center: POST /report answers 202, so a demo started with
+ * SUPERTEXT_REPORT_URL=http://127.0.0.1:8765/report never reports to the live center.
  */
 import http from 'node:http';
 import { randomBytes } from 'node:crypto';
@@ -34,14 +36,23 @@ http
       res.writeHead(status, { 'Content-Type': type });
       res.end(type === 'application/json' ? JSON.stringify(body) : body);
     };
+    if (req.method === 'POST' && path === '/report') {
+      for await (const chunk of req) void chunk;
+      console.log('POST /report (version report, not forwarded)');
+      return send(202, { ok: true });
+    }
     if (!/^Supertext-Auth-Key \S+$/.test(req.headers.authorization || '')) return send(401, { error: 'missing key' });
     if (path === '/features') return send(200, {});
     if (req.method === 'POST' && path === '/translate/ai/file') {
       const chunks = [];
       for await (const chunk of req) chunks.push(chunk);
       const form = await new Request('http://x', { method: 'POST', headers: req.headers, body: Buffer.concat(chunks) }).formData();
-      // Like the real API: the target needs a region ("de-DE"), the source must be bare ("en").
-      if (!/^[a-z]{2,3}-[A-Za-z0-9]{2,4}$/.test(form.get('target_lang') ?? '') || /[-_]/.test(form.get('source_lang') ?? '')) {
+      // Like the real API: German, English, French, Italian and Portuguese targets need a
+      // region ("de-CH"), Chinese and Serbian a script; the others are bare ("es"); the
+      // source must be bare ("en").
+      const target = form.get('target_lang') ?? '';
+      const needsSubtag = /^(de|en|fr|it|pt|zh|sr)$/.test(target.split('-')[0]);
+      if (!/^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/.test(target) || (needsSubtag && !target.includes('-')) || /[-_]/.test(form.get('source_lang') ?? '')) {
         console.log(`POST rejected: target_lang=${form.get('target_lang')} source_lang=${form.get('source_lang')}`);
         return send(400, { error: { code: 'INVALID_LANGUAGE_PAIR', message: `Invalid language pair ${form.get('source_lang')} -> ${form.get('target_lang')}` } });
       }

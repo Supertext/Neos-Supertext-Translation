@@ -29,9 +29,12 @@ Neos:
               it:
                 label: 'Italiano'
 
+# Language mapping: every dimension value that isn't a Supertext code itself (en_US is)
+# needs one; nothing is guessed.
 Supertext:
   NeosTranslation:
     languages:
+      en_UK: { code: 'en-GB' }
       de: { code: 'de-CH', politeness: 'more' }
       fr: { code: 'fr-CH', politeness: 'more' }
       it: { code: 'it-CH', politeness: 'more' }

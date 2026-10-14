@@ -5,13 +5,16 @@ declare(strict_types=1);
 namespace Supertext\NeosTranslation\Service;
 
 use Neos\Flow\Annotations as Flow;
-use Supertext\NeosTranslation\Sdk\LanguageCodes;
 use Supertext\NeosTranslation\Configuration\Settings;
+use Supertext\NeosTranslation\Sdk\V1\Languages;
 
 /**
- * Maps language dimension values ("de", "en_US") to Supertext language codes:
- * regional targets ("de" => "de-DE", "en_US" => "en-US", or the configured code)
- * and bare sources ("en_US" => "en"). Rules in the Supertext SDK's LanguageCodes.
+ * Maps language dimension values ("de", "en_US") to Supertext language codes with the
+ * Supertext SDK's rules (the same in every Supertext plugin, nothing guessed): the
+ * language mapping (`languages.<value>.code`) wins; otherwise a dimension value that
+ * equals a Supertext code apart from case and "_"/"-" is used ("en_US" => "en-US",
+ * "es"); anything else throws SupertextException `unsupported_language` before
+ * anything is sent. Sources are bare ("en_US" => "en", a mapped "de-CH" => "de").
  */
 #[Flow\Scope('singleton')]
 class LanguageResolver
@@ -29,37 +32,56 @@ class LanguageResolver
         if (($this->settings->getLanguage($target)['enabled'] ?? true) === false) {
             return false;
         }
-        return $this->primary($source) !== $this->primary($target);
+        return self::primary($source) !== self::primary($target);
     }
 
-    /**
-     * Supertext target code, always with a region: the configured code ("de" =>
-     * "de-CH"), else the dimension value ("en_US" => "en-US", bare "de" => "de-DE").
-     */
+    /** Supertext target code: the mapped code, else an exact Supertext code ("en_US" => "en-US"). */
     public function targetCode(string $dimensionValue): string
     {
-        return LanguageCodes::target($this->configuredCode($dimensionValue) ?: $dimensionValue);
+        return Languages::target($dimensionValue, $this->settings->getLanguageMapping());
     }
 
-    /** Supertext source code: the bare language ("en_US" => "en"; a configured "de-CH" => "de"). */
+    /** Supertext source code: the bare language ("en_US" => "en"; a mapped "de-CH" => "de"). */
     public function sourceCode(string $dimensionValue): string
     {
-        return LanguageCodes::source($this->configuredCode($dimensionValue) ?: $dimensionValue);
+        return Languages::source($dimensionValue, $this->settings->getLanguageMapping());
     }
 
-    /** "more", "less" or "default" */
+    /** The target code, or null when the dimension value has no Supertext language (for supertext:check). */
+    public function targetCodeOrNull(string $dimensionValue): ?string
+    {
+        return self::resolveTarget($dimensionValue, $this->settings->getLanguageMapping());
+    }
+
+    /** "more", "less" or "default", as configured (sent as it is: see supertext:check for targets without it) */
     public function politeness(string $dimensionValue): string
     {
         $politeness = (string)($this->settings->getLanguage($dimensionValue)['politeness'] ?? 'default');
         return in_array($politeness, ['more', 'less'], true) ? $politeness : 'default';
     }
 
-    private function configuredCode(string $dimensionValue): string
+    /**
+     * @param array<string, string> $mapping
+     */
+    public static function resolveTarget(string $dimensionValue, array $mapping): ?string
     {
-        return trim((string)($this->settings->getLanguage($dimensionValue)['code'] ?? ''));
+        try {
+            return Languages::target($dimensionValue, $mapping);
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
-    private function primary(string $value): string
+    /**
+     * Whether a configured formal/informal tone can't be used for this target: true when
+     * politeness is "more"/"less" and Supertext offers no tone for the target code.
+     */
+    public static function politenessUnsupported(string $targetCode, string $politeness): bool
+    {
+        return $politeness !== 'default' && Languages::supportsPoliteness($targetCode) === false;
+    }
+
+    private static function primary(string $value): string
     {
         return strtolower((string)strtok($value, '-_'));
     }

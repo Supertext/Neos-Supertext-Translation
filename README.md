@@ -35,6 +35,8 @@ export SUPERTEXT_API_KEY=...        # or Supertext.NeosTranslation.apiKey
 ./flow supertext:check
 ```
 
+Map every language that isn't a Supertext code itself (e.g. `de` → `de-CH`) in `Supertext.NeosTranslation.languages`; `supertext:check` lists them. The package sends version information (no content, no key) to Supertext unless you turn it off; see the installation guide.
+
 ## Demo
 
 `demo/` builds a container with Neos 9.1, the Neos demo site (English, German) plus empty French and Italian, and this package. It's deployed to Railway on every push to `main` — details in the [developer guide](docs/DEVELOPER.md#demo-railway).

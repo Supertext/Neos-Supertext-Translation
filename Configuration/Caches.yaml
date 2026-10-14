@@ -1,0 +1,8 @@
+# State of the version reports and the API key check (Commando Center): small JSON
+# values that must survive "flow flow:cache:flush", so the cache is persistent
+# (Data/Persistent/Cache). Several web servers: give it a shared backend, e.g.
+# Neos\Cache\Backend\PdoBackend.
+Supertext_NeosTranslation_State:
+  frontend: Neos\Cache\Frontend\StringFrontend
+  backend: Neos\Cache\Backend\FileBackend
+  persistent: true

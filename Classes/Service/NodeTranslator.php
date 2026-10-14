@@ -20,7 +20,9 @@ use Supertext\NeosTranslation\Api\SupertextClientFactory;
 use Supertext\NeosTranslation\Configuration\Settings;
 use Supertext\NeosTranslation\Domain\PendingTranslation;
 use Supertext\NeosTranslation\Domain\PendingTranslations;
-use Supertext\NeosTranslation\Sdk\Segment;
+use Supertext\NeosTranslation\Reporting\ReportingService;
+use Supertext\NeosTranslation\Sdk\V1\Segment;
+use Supertext\NeosTranslation\Sdk\V1\SupertextException;
 
 /**
  * Translates all pending node variants: one Supertext document per
@@ -53,6 +55,9 @@ class NodeTranslator
 
     #[Flow\Inject]
     protected LoggerInterface $logger;
+
+    #[Flow\Inject]
+    protected ReportingService $reportingService;
 
     private bool $running = false;
 
@@ -117,11 +122,14 @@ class NodeTranslator
                 return $result;
             }
 
+            // Language codes first: an unmapped language stops here, before anything is sent.
+            $targetCode = $this->languageResolver->targetCode($targetLanguage);
+            $sourceCode = $this->languageResolver->sourceCode($sourceLanguage);
             // One document per batch; the SDK splits only above ~900k characters.
             $translated = $this->clientFactory->create()->translateTexts(
                 $segments,
-                $this->languageResolver->targetCode($targetLanguage),
-                $this->languageResolver->sourceCode($sourceLanguage),
+                $targetCode,
+                $sourceCode,
                 $this->languageResolver->politeness($targetLanguage),
             );
 
@@ -153,10 +161,13 @@ class NodeTranslator
                 $result->fields += count($properties);
             }
         } catch (\Throwable $e) {
-            $result->error = $e->getMessage();
+            $result->error = ErrorMessages::forException($e, $targetLanguage);
+            if ($e instanceof SupertextException && $e->errorCode === SupertextException::AUTHENTICATION_FAILURE) {
+                $this->reportingService->authenticationFailed($e->status ?? 401);
+            }
             $this->logger->error(sprintf(
                 'Supertext: translating %d node(s) from "%s" to "%s" in workspace "%s" failed: %s',
-                count($items), $sourceLanguage, $targetLanguage, $first->workspaceName->value, $e->getMessage()
+                count($items), $sourceLanguage, $targetLanguage, $first->workspaceName->value, $result->error
             ), ['exception' => $e]);
             return $result;
         }

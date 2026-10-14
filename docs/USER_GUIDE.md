@@ -58,6 +58,14 @@ Your administrator decides per language whether Supertext writes formally (*Sie*
 
 If Supertext can't translate (for example no API key configured, network problem, quota exceeded), Neos still creates the page and its content in the new language, **as untranslated copies** in the source language. You can translate them by hand, or discard the changes in your workspace and try again later. Your administrator finds the reason in the Neos system log (see the installation guide).
 
+Reasons your administrator may see, and what they mean for you:
+
+| Message | What it means |
+| --- | --- |
+| *The language … has no Supertext language yet. Ask your administrator to map it …* | Your administrator hasn't told the package yet which Supertext language this Neos language is (e.g. Swiss or German German). Nothing was sent to Supertext. Ask your administrator to map it, then translate again. |
+| *Supertext offers no formal or informal tone for this language …* | A formal or informal tone is set for a language that has none (e.g. English). Your administrator sets it back to the default tone. |
+| *Supertext rejected the API key* / *No Supertext API key is set* | The connection to Supertext isn't set up correctly. Your administrator fixes the key. |
+
 The package has no screens of its own: everything you see while translating is Neos' own interface, in the interface language set in your user settings.
 
 ## Tips

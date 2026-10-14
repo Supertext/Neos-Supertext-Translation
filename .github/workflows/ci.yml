@@ -27,6 +27,8 @@ jobs:
         run: find . -name '*.php' -not -path './vendor/*' -not -path './Packages/*' -print0 | xargs -0 -n1 php -l
       - name: Version helper test
         run: php Tests/PackageVersionTest.php
+      - name: Version reports, key check and ping test
+        run: php Tests/ReportingTest.php
       - name: Demo entrypoint syntax
         run: sh -n demo/entrypoint.sh
 
