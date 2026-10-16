@@ -7575,7 +7575,7 @@
             "dist": {
                 "type": "path",
                 "url": "./DistributionPackages/Supertext.NeosTranslation",
-                "reference": "78956408b8f67f055cf213f180d93907f5285193"
+                "reference": "5ea1641ba81783f6556f3972ffbce026b9209b55"
             },
             "require": {
                 "ext-dom": "*",
@@ -7593,7 +7593,8 @@
             "autoload": {
                 "psr-4": {
                     "Supertext\\NeosTranslation\\": "Classes/",
-                    "Supertext\\NeosTranslation\\Sdk\\": "lib/supertext-sdk/src/"
+                    "Supertext\\NeosTranslation\\Sdk\\": "lib/supertext-sdk/src/",
+                    "Supertext\\NeosTranslation\\PluginHealth\\": "lib/supertext-plugin-health/src/"
                 }
             },
             "license": [

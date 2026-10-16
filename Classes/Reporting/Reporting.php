@@ -4,19 +4,23 @@ declare(strict_types=1);
 
 namespace Supertext\NeosTranslation\Reporting;
 
+use Supertext\NeosTranslation\PluginHealth\CallableKeyChecker;
+use Supertext\NeosTranslation\PluginHealth\InstallationReporter;
+use Supertext\NeosTranslation\PluginHealth\KeyCheck;
+use Supertext\NeosTranslation\PluginHealth\PingResponse;
+use Supertext\NeosTranslation\PluginHealth\ReporterResult;
+use Supertext\NeosTranslation\PluginHealth\ReporterState;
 use Supertext\NeosTranslation\Sdk\Http\HttpTransport;
-use Supertext\NeosTranslation\Sdk\V1\ApiKeyCheck;
-use Supertext\NeosTranslation\Sdk\V1\InstallationReporter;
-use Supertext\NeosTranslation\Sdk\V1\PingResponse;
+use Supertext\NeosTranslation\Sdk\Supertext;
+use Supertext\NeosTranslation\Sdk\V1\Client;
 use Supertext\NeosTranslation\Sdk\V1\Protocol;
-use Supertext\NeosTranslation\Sdk\V1\ReporterResult;
-use Supertext\NeosTranslation\Sdk\V1\ReporterState;
 
 /**
  * Version reports to the Supertext Commando Center, the automatic API key check and the
  * callback ping (Commando-Center-Supertext-Translation → docs/DEVELOPER.md → Report
- * protocol). The protocol is the SDK's InstallationReporter; this class only gives it what
- * Neos knows and keeps its state in a StateStorage. Plain PHP (no Flow), so it is unit-tested
+ * protocol). The protocol is Supertext Plugin Health's InstallationReporter (bundled in
+ * lib/supertext-plugin-health), the key check is the SDK's Client::checkApiKey(); this class
+ * only gives them what Neos knows and keeps the state in a StateStorage. Plain PHP (no Flow), so it is unit-tested
  * on its own; Flow wires it up in ReportingService.
  *
  * Neos keeps the API key in Settings.yaml or the environment, so there is no "settings
@@ -44,6 +48,7 @@ final class Reporting
      * @param string|null              $systemVersion the installed neos/neos version
      * @param (callable(): float)|null $now           for tests
      * @param (callable(float): void)|null $sleep     for tests (the key check's 429 retries)
+     * @param HttpTransport|null       $transport     the SDK's HTTP transport, for the key check and the reports
      */
     public function __construct(
         private readonly StateStorage $storage,
@@ -82,7 +87,7 @@ final class Reporting
         return $path === '/' . self::PING_PATH || str_ends_with($path, '/' . self::PING_PATH);
     }
 
-    /** The ping route's answer (status, headers and body exactly as the SDK returns them). */
+    /** The ping route's answer (status, headers and body exactly as Plugin Health returns them). */
     public static function ping(mixed $challenge, bool $enabled): PingResponse
     {
         return InstallationReporter::pingResponse(is_string($challenge) ? $challenge : null, self::PLUGIN_NAME, $enabled);
@@ -129,11 +134,27 @@ final class Reporting
             pluginName: self::PLUGIN_NAME,
             pluginVersion: $this->pluginVersion,
             systemName: self::SYSTEM_NAME,
+            keyChecker: new CallableKeyChecker(
+                fn (#[\SensitiveParameter] string $key) => $this->client($key)->checkApiKey(),
+                [Protocol::class, 'apiKeyFingerprint'],
+            ),
             systemVersion: $this->systemVersion,
+            sdkVersion: Supertext::SDK_VERSION,
             callbackUrl: $siteUrl !== null && $this->enabled ? self::callbackUrl($siteUrl) : null,
             reportUrl: $this->reportUrl,
+            transport: $this->transport !== null ? new PluginHealthTransport($this->transport) : null,
+            now: $this->now,
+        );
+    }
+
+    /** The SDK client for the key check (same endpoint, transport and User-Agent as before). */
+    private function client(#[\SensitiveParameter] string $apiKey): Client
+    {
+        return new Client(
+            $apiKey,
+            baseUrl: $this->apiBaseUrl,
+            userAgent: self::PLUGIN_NAME . '/' . $this->pluginVersion,
             transport: $this->transport,
-            apiBaseUrl: $this->apiBaseUrl,
             sleep: $this->sleep,
             now: $this->now,
         );
@@ -162,7 +183,7 @@ final class Reporting
      * For supertext:check: checks the key now, then sends a `check` report (when reports are
      * on and the site URL is known). Never throws.
      *
-     * @return array{check: ApiKeyCheck, report: ReporterResult|null}
+     * @return array{check: KeyCheck, report: ReporterResult|null}
      */
     public function checkAndReport(#[\SensitiveParameter] string $apiKey, ?string $siteUrl): array
     {
@@ -170,7 +191,7 @@ final class Reporting
             $state = $this->loadState();
             // The check alone: the `check` report below carries its result.
             $checked = $this->reporter($siteUrl, false)->testConnection($state, $apiKey);
-            $check = $checked->check ?? new ApiKeyCheck(ApiKeyCheck::ERROR, ApiKeyCheck::timestamp(microtime(true)));
+            $check = $checked->check ?? new KeyCheck(KeyCheck::ERROR, KeyCheck::timestamp(microtime(true)));
             $report = null;
             $state = $checked->state;
             if ($this->enabled && self::normalizeSiteUrl($siteUrl) !== null) {
@@ -181,12 +202,12 @@ final class Reporting
             return ['check' => $check, 'report' => $report];
         } catch (\Throwable $e) {
             $this->failed('key check', $e);
-            return ['check' => new ApiKeyCheck(ApiKeyCheck::ERROR, ApiKeyCheck::timestamp(microtime(true))), 'report' => null];
+            return ['check' => new KeyCheck(KeyCheck::ERROR, KeyCheck::timestamp(microtime(true))), 'report' => null];
         }
     }
 
     /** The latest stored key check, or null. */
-    public function lastCheck(): ?ApiKeyCheck
+    public function lastCheck(): ?KeyCheck
     {
         try {
             return $this->loadState()->keyCheck;

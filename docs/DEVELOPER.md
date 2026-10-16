@@ -24,10 +24,11 @@ Neos UI "Create and copy"  ──►  N × CreateNodeVariant   (one per page/con
 | `Service\PropertySelector` | Which properties are translated, from the node type: string properties that are inline-editable (HTML) or use a configured Inspector text/rich-text editor; `options.supertext.translate` overrides; `excludedProperties`. |
 | `Service\LanguageResolver` | Dimension value → Supertext code/politeness with the SDK's `Languages` and the `languages.*.code` mapping (see *Language codes*); skips same-language variants (`en_US` → `en_UK`). |
 | `Service\ErrorMessages` | English messages for administrators: the SDK's, except `unsupported_language`/`unsupported_feature` (naming the setting to change) and the API key errors (with the account and API key links). |
-| `Http\PingMiddleware` | Public `GET …/supertext/ping` for the Commando Center, `before session` (no session cookie, no routing, no page cache); answers `InstallationReporter::pingResponse()` as it is; other paths and methods pass through. |
-| `Reporting\Reporting` | Plain-PHP glue to the SDK's `InstallationReporter`: plugin/system names, callback URL, site URL fallback, state load/save, the actions (`onRequest`, `authenticationFailed`, `testConnection`, check + `check` report). Never throws. Unit-tested without Neos. |
+| `Http\PingMiddleware` | Public `GET …/supertext/ping` for the Commando Center, `before session` (no session cookie, no routing, no page cache); answers Plugin Health's `InstallationReporter::pingResponse()` as it is; other paths and methods pass through. |
+| `Reporting\Reporting` | Plain-PHP glue to Supertext Plugin Health's `InstallationReporter` (key checker: the SDK's `Client::checkApiKey()` and `Protocol::apiKeyFingerprint()`; `sdkVersion`: `Supertext::SDK_VERSION`): plugin/system names, callback URL, site URL fallback, state load/save, the actions (`onRequest`, `authenticationFailed`, `testConnection`, check + `check` report). Never throws. Unit-tested without Neos. |
 | `Reporting\ReportingService` | Flow wiring: the `versionReports` setting with `SUPERTEXT_VERSION_REPORTS`, the site URL Neos knows, the Neos version (`InstalledVersions` of `neos/neos`), Guzzle, debug logging. |
 | `Reporting\CacheStateStorage` | The reporter's state and the remembered site URL in the persistent Flow cache `Supertext_NeosTranslation_State` (`Configuration/Caches.yaml`, read through the `CacheManager`). |
+| `Reporting\PluginHealthTransport` | Plugin Health's `HttpTransport` over the SDK's (Guzzle), so reports use the same HTTP client as Supertext requests. Plain PHP. |
 | `Reporting\KeyCheckMessages` | The Commando Center's key-check messages (English) with the bare Supertext URLs. |
 | `Api\SupertextClientFactory` | Creates the SDK's `Supertext\NeosTranslation\Sdk\V1\Client` from the settings (key, endpoint, poll interval and timeout, User-Agent `Neos-Supertext-Translation/<version>`). |
 | `Api\GuzzleHttpTransport` | The SDK's `HttpTransport` over Guzzle (a Neos dependency), so ext-curl isn't required. |
@@ -41,7 +42,7 @@ Rich text (inline-editable/RichTextEditor properties) is sent as one `data-st-id
 
 ## Version reports, API key check and ping (Commando Center)
 
-Every Supertext plugin reports to the Supertext Commando Center (Commando-Center-Supertext-Translation → `docs/DEVELOPER.md` → *Report protocol*); the protocol is the SDK's `V1\InstallationReporter` (see the SDK's README and `spec/reporting.json`). Neos has no settings form, so there is no `afterSettingsSaved`:
+Every Supertext plugin reports to the Supertext Commando Center (Commando-Center-Supertext-Translation → `docs/DEVELOPER.md` → *Report protocol*); the protocol is the `InstallationReporter` of **Supertext Plugin Health** (bundled, see below), the key check is the SDK's `Client::checkApiKey()`. Neos has no settings form, so there is no `afterSettingsSaved`:
 
 | When | Reporter call | Where |
 | --- | --- | --- |
@@ -57,11 +58,20 @@ Every Supertext plugin reports to the Supertext Commando Center (Commando-Center
 - **State:** `ReporterState` as JSON under `reporter`, the remembered site URL under `siteUrl`, in the persistent cache `Supertext_NeosTranslation_State`. The key's fingerprint stays there; the key itself is never stored, logged or reported. Storage errors are logged at debug level and ignored.
 - `SUPERTEXT_REPORT_URL` points reports elsewhere (tests, the stand-in's `POST /report`).
 
+## Supertext Plugin Health
+
+[Supertext Plugin Health](https://github.com/Supertext/Commando-Center-Supertext-Translation/tree/main/plugin-health) (MIT, no dependencies) is the plugin side of the Commando Center: version reports, the API key check result and the ping answer. It lives in the Commando Center's repository (`plugin-health/`) and doesn't need the SDK: `Reporting\Reporting` passes it the SDK's key check (`CallableKeyChecker` over `Client::checkApiKey()` and `Protocol::apiKeyFingerprint()`) and `Supertext::SDK_VERSION`. Its `ReporterState` is the same JSON the SDK 0.1–0.2 reporter stored, so sites keep their history (no new `installed` report).
+
+**Bundled copy:** `lib/supertext-plugin-health/` (the PHP `src/`, `LICENSE`, `COMMIT`, `VERSION`, a short README), namespace changed from `Supertext\PluginHealth` to `Supertext\NeosTranslation\PluginHealth`, autoloaded by `composer.json`, excluded from Flow's object management like the SDK and only scanned (not analysed) by PHPStan.
+
+- Update it with `scripts/vendor-plugin-health.sh [commit-or-branch]`, e.g. `scripts/vendor-plugin-health.sh plugin-health-v0.1.0` (default `main`; `PLUGIN_HEALTH_DIR=<clone>` uses a local clone of Commando-Center-Supertext-Translation), run the tests, and commit with a CHANGELOG entry.
+- Never edit the copy: fix it in Commando-Center-Supertext-Translation → `plugin-health/`, then re-run the script.
+
 ## Supertext API protocol
 
-The package talks to Supertext through the official **Supertext SDK for PHP** ([Supertext-API-SDK-and-Guide](https://github.com/Supertext/Supertext-API-SDK-and-Guide/tree/main/sdk/php), MIT). The SDK implements the protocol below, the HTML packing (one `data-st-id` element per property), the list of Supertext languages (`V1\Languages`), the API key check and the Commando Center reports, the 429 retries and stable error codes (`SupertextException::$errorCode`); it is tested against the shared test vectors of all Supertext SDKs. Error messages (English) come from the SDK and end up in the log and the `X-Supertext-Error` header.
+The package talks to Supertext through the official **Supertext SDK for PHP** ([Supertext-API-SDK-and-Guide](https://github.com/Supertext/Supertext-API-SDK-and-Guide/tree/main/sdk/php), MIT). The SDK implements the protocol below, the HTML packing (one `data-st-id` element per property), the list of Supertext languages (`V1\Languages`), the API key check (`Client::checkApiKey()`; the Commando Center reports are Supertext Plugin Health's, see above), the 429 retries and stable error codes (`SupertextException::$errorCode`); it is tested against the shared test vectors of all Supertext SDKs. Error messages (English) come from the SDK and end up in the log and the `X-Supertext-Error` header.
 
-**Bundled copy:** the package ships the SDK in `lib/supertext-sdk/` (sources, `LICENSE`, `COMMIT` with the SDK commit, a short README), with the namespace changed from `Supertext\Sdk` to `Supertext\NeosTranslation\Sdk` (API v1 classes in `Sdk\V1`, `src/V1/`; the HTTP transport in `Sdk\Http`) and autoloaded by the package's `composer.json`. Sites install only the package; another package that requires `supertext/supertext-sdk` itself can't clash with it. This stays so after the SDK is on Packagist. `Configuration/Settings.yaml` limits Flow's object management to the package's own classes (`Neos.Flow.object.includeClasses`: everything under `Supertext\NeosTranslation\` except `Sdk\`). Without it Flow proxies the SDK's classes, and the proxies break the SDK's named constructor arguments (`Unknown named parameter $baseUrl`). The package's namespace must stay the **first** `psr-4` entry in `composer.json`: Flow derives the package key and install folder from it.
+**Bundled copy:** the package ships the SDK in `lib/supertext-sdk/` (sources, `LICENSE`, `COMMIT` with the SDK commit, a short README), with the namespace changed from `Supertext\Sdk` to `Supertext\NeosTranslation\Sdk` (API v1 classes in `Sdk\V1`, `src/V1/`; the HTTP transport in `Sdk\Http`) and autoloaded by the package's `composer.json`. Sites install only the package; another package that requires `supertext/supertext-sdk` itself can't clash with it. This stays so after the SDK is on Packagist. `Configuration/Settings.yaml` limits Flow's object management to the package's own classes (`Neos.Flow.object.includeClasses`: everything under `Supertext\NeosTranslation\` except `Sdk\`, `PluginHealth\` and the plain-PHP `Reporting\Reporting` and `Reporting\PluginHealthTransport`). Without it Flow proxies the SDK's classes, and the proxies break the SDK's named constructor arguments (`Unknown named parameter $baseUrl`). The package's namespace must stay the **first** `psr-4` entry in `composer.json`: Flow derives the package key and install folder from it.
 
 - Update it with `scripts/vendor-sdk.sh [commit-or-branch]` (default `main`; `SDK_DIR=<clone>` uses a local clone), run the tests, and commit with a CHANGELOG entry.
 - Never edit the copy: fix the SDK in its own repository, then re-run the script. PHPStan analyses `Classes/` only.
@@ -119,7 +129,7 @@ With PHP's built-in server, use a router that serves existing files and sets `SC
 
 ```bash
 php Tests/PackageVersionTest.php # version helper (Composer InstalledVersions), no Neos needed
-php Tests/ReportingTest.php      # version reports, key check, ping, state storage (fake transport and storage), no Neos needed
+php Tests/ReportingTest.php      # version reports, key check, ping, state storage, SDK 0.2 state (bundled SDK + Plugin Health, fake transport and storage), no Neos needed
 php Tests/SdkTest.php            # Guzzle transport + bundled SDK round trip (mocked HTTP), language mapping/unmapped errors, error codes;
                                  # needs Guzzle from vendor/ or demo/Packages/Libraries (composer install --working-dir=demo)
 ```

@@ -22,10 +22,10 @@ use Neos\Flow\Security\Context as SecurityContext;
 use Neos\Neos\Domain\Service\NodeTypeNameFactory;
 use Supertext\NeosTranslation\Configuration\PackageVersion;
 use Supertext\NeosTranslation\Configuration\Settings;
+use Supertext\NeosTranslation\PluginHealth\KeyCheck;
 use Supertext\NeosTranslation\Reporting\KeyCheckMessages;
 use Supertext\NeosTranslation\Reporting\Reporting;
 use Supertext\NeosTranslation\Reporting\ReportingService;
-use Supertext\NeosTranslation\Sdk\V1\ApiKeyCheck;
 use Supertext\NeosTranslation\Sdk\V1\SupertextException;
 use Supertext\NeosTranslation\Service\ErrorMessages;
 use Supertext\NeosTranslation\Service\LanguageResolver;
@@ -142,7 +142,7 @@ class SupertextCommandController extends CommandController
         $reportsOn = $this->reportingService->isEnabled();
         $siteUrl = $this->reportingService->siteUrl();
         ['check' => $check, 'report' => $report] = $this->reportingService->check();
-        $keyOk = $check->status === ApiKeyCheck::OK;
+        $keyOk = $check->status === KeyCheck::OK;
         $this->outputLine();
         $this->outputLine(
             $keyOk ? '<success>%s</success>' : '<error>%s</error>',

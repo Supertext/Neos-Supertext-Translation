@@ -5,6 +5,8 @@ parameters:
     level: 5
     paths:
         - Classes
-    # The bundled Supertext SDK: known to PHPStan, not analysed (fix it in the SDK repository).
+    # The bundled Supertext SDK and Supertext Plugin Health: known to PHPStan, not analysed
+    # (fix them in their own repositories).
     scanDirectories:
         - lib/supertext-sdk/src
+        - lib/supertext-plugin-health/src

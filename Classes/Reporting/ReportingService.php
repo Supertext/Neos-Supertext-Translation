@@ -13,10 +13,10 @@ use Psr\Log\LoggerInterface;
 use Supertext\NeosTranslation\Api\GuzzleHttpTransport;
 use Supertext\NeosTranslation\Configuration\PackageVersion;
 use Supertext\NeosTranslation\Configuration\Settings;
-use Supertext\NeosTranslation\Sdk\V1\ApiKeyCheck;
-use Supertext\NeosTranslation\Sdk\V1\InstallationReporter;
-use Supertext\NeosTranslation\Sdk\V1\PingResponse;
-use Supertext\NeosTranslation\Sdk\V1\ReporterResult;
+use Supertext\NeosTranslation\PluginHealth\InstallationReporter;
+use Supertext\NeosTranslation\PluginHealth\KeyCheck;
+use Supertext\NeosTranslation\PluginHealth\PingResponse;
+use Supertext\NeosTranslation\PluginHealth\ReporterResult;
 
 /**
  * Flow glue for Reporting: settings, the site URL Neos knows, the Neos and package
@@ -96,7 +96,7 @@ class ReportingService
     /**
      * supertext:check: the key check now, then a `check` report.
      *
-     * @return array{check: ApiKeyCheck, report: ReporterResult|null}
+     * @return array{check: KeyCheck, report: ReporterResult|null}
      */
     public function check(): array
     {

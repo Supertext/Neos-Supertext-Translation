@@ -16,7 +16,7 @@ For administrators setting up the package on a Neos site.
 
 ## 1. Add the package
 
-The package is not on Packagist yet. Add the GitHub repository to your project's `composer.json`, then require it (it brings the [Supertext SDK](https://github.com/Supertext/Supertext-API-SDK-and-Guide) it uses with it; there is nothing else to install):
+The package is not on Packagist yet. Add the GitHub repository to your project's `composer.json`, then require it (it brings the [Supertext SDK](https://github.com/Supertext/Supertext-API-SDK-and-Guide) and Supertext Plugin Health it uses with it; there is nothing else to install):
 
 ```bash
 composer config repositories.supertext-neos vcs https://github.com/Supertext/Neos-Supertext-Translation

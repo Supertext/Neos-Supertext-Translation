@@ -74,10 +74,12 @@ Neos:
   Flow:
     object:
       # Object management for the package's own classes only: the bundled Supertext SDK
-      # (lib/supertext-sdk, Supertext\NeosTranslation\Sdk) and Reporting\Reporting are plain
-      # PHP. Flow would otherwise proxy them, and the proxies break named constructor arguments.
+      # (lib/supertext-sdk, Supertext\NeosTranslation\Sdk), the bundled Supertext Plugin Health
+      # (lib/supertext-plugin-health, Supertext\NeosTranslation\PluginHealth),
+      # Reporting\Reporting and Reporting\PluginHealthTransport are plain PHP. Flow would
+      # otherwise proxy them, and the proxies break named constructor arguments.
       includeClasses:
-        'Supertext.NeosTranslation': ['^Supertext\\NeosTranslation\\(?!Sdk\\|Reporting\\Reporting$)']
+        'Supertext.NeosTranslation': ['^Supertext\\NeosTranslation\\(?!Sdk\\|PluginHealth\\|Reporting\\Reporting$|Reporting\\PluginHealthTransport$)']
     http:
       middlewares:
         # Public GET /supertext/ping for the Supertext Commando Center (no session, no

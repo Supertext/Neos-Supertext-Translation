@@ -1,6 +1,7 @@
 <?php
 
-// Version reports, API key check and ping (Classes/Reporting), with the bundled SDK and a fake
+// Version reports, API key check and ping (Classes/Reporting), with the bundled SDK and
+// Supertext Plugin Health (lib/supertext-plugin-health) and a fake
 // HTTP transport: never the live API, never the Commando Center. No Neos needed:
 //   php Tests/ReportingTest.php
 declare(strict_types=1);
@@ -8,6 +9,7 @@ declare(strict_types=1);
 spl_autoload_register(static function (string $class): void {
     $prefixes = [
         'Supertext\\NeosTranslation\\Sdk\\' => __DIR__ . '/../lib/supertext-sdk/src/',
+        'Supertext\\NeosTranslation\\PluginHealth\\' => __DIR__ . '/../lib/supertext-plugin-health/src/',
         'Supertext\\NeosTranslation\\' => __DIR__ . '/../Classes/',
     ];
     foreach ($prefixes as $prefix => $dir) {
@@ -21,13 +23,15 @@ spl_autoload_register(static function (string $class): void {
     }
 });
 
+use Supertext\NeosTranslation\PluginHealth\KeyCheck;
 use Supertext\NeosTranslation\Reporting\KeyCheckMessages;
 use Supertext\NeosTranslation\Reporting\Reporting;
 use Supertext\NeosTranslation\Reporting\StateStorage;
 use Supertext\NeosTranslation\Sdk\Http\HttpRequest;
 use Supertext\NeosTranslation\Sdk\Http\HttpResponse;
 use Supertext\NeosTranslation\Sdk\Http\HttpTransport;
-use Supertext\NeosTranslation\Sdk\V1\ApiKeyCheck;
+use Supertext\NeosTranslation\Sdk\Supertext;
+use Supertext\NeosTranslation\Sdk\V1\Protocol;
 
 final class MemoryStorage implements StateStorage
 {
@@ -114,7 +118,7 @@ $make = static function (MemoryStorage $storage, FakeTransport $transport, bool 
         }, sleep: static function (): void {});
 };
 
-// 1. Ping endpoint: answers exactly as the SDK says; 404 while reports are off.
+// 1. Ping endpoint: answers exactly as Plugin Health says; 404 while reports are off.
 $ping = Reporting::ping('abcdefghijklmnop0123', true);
 $check('ping ok status', $ping->status, 200);
 $check('ping ok body', $ping->body, '{"ok":true,"plugin":"Neos-Supertext-Translation","challenge":"abcdefghijklmnop0123"}');
@@ -144,6 +148,7 @@ $storage = new MemoryStorage();
 $transport = new FakeTransport();
 $result = $make($storage, $transport)->run(Reporting::ACTION_ON_REQUEST, KEY, SITE);
 $report = $transport->lastReport();
+$userAgent = $transport->requests[0]->headers['User-Agent'] ?? '';
 $check('first request', $transport->take(), ['GET features', 'report installed']);
 $check('first request sent', $result?->sent, true);
 $check('report plugin', $report['plugin'] ?? null, ['name' => 'Neos-Supertext-Translation', 'version' => '0.3.0']);
@@ -152,6 +157,8 @@ $check('report runtime', ($report['runtime']['name'] ?? null), 'PHP');
 $check('report site', $report['site_url'] ?? null, SITE);
 $check('report callback', $report['callback'] ?? null, ['url' => 'https://www.example.ch/supertext/ping']);
 $check('report key check', [$report['api_key_configured'] ?? null, $report['api_key_check']['status'] ?? null], [true, 'ok']);
+$check('report SDK version', $report['sdk_version'] ?? null, Supertext::SDK_VERSION);
+$check('key check User-Agent', str_contains($userAgent, 'Neos-Supertext-Translation/0.3.0'), true);
 $check('state stored as JSON', is_array(json_decode($storage->values['reporter'] ?? '', true)), true);
 $make($storage, $transport)->run(Reporting::ACTION_ON_REQUEST, KEY, SITE);
 $check('second request: nothing to do', $transport->take(), []);
@@ -160,7 +167,7 @@ $check('after an update', $transport->take(), ['report upgraded']);
 $transport->featuresStatus = 401;
 $make($storage, $transport, version: '0.4.0')->run(Reporting::ACTION_ON_REQUEST, 'another-key', SITE);
 $check('changed key is checked', $transport->take(), ['GET features', 'report api_key_check']);
-$check('changed key result', $make($storage, $transport)->lastCheck()?->status, ApiKeyCheck::INVALID);
+$check('changed key result', $make($storage, $transport)->lastCheck()?->status, KeyCheck::INVALID);
 $transport->featuresStatus = 200;
 
 // 4. A translation got 401: invalid without a request, reported once.
@@ -179,7 +186,7 @@ $storage = new MemoryStorage();
 $transport = new FakeTransport();
 $make($storage, $transport, false)->run(Reporting::ACTION_ON_REQUEST, KEY, SITE);
 $check('off: check only', $transport->take(), ['GET features']);
-$check('off: check stored', $make($storage, $transport, false)->lastCheck()?->status, ApiKeyCheck::OK);
+$check('off: check stored', $make($storage, $transport, false)->lastCheck()?->status, KeyCheck::OK);
 
 // 6. No site URL (a command before anyone opened the back end): check only.
 $storage = new MemoryStorage();
@@ -206,13 +213,13 @@ $storage = new MemoryStorage();
 $transport = new FakeTransport();
 ['check' => $keyCheck, 'report' => $report] = $make($storage, $transport)->checkAndReport(KEY, SITE);
 $check('check command', $transport->take(), ['GET features', 'report check']);
-$check('check command result', [$keyCheck->status, $report?->sent], [ApiKeyCheck::OK, true]);
+$check('check command result', [$keyCheck->status, $report?->sent], [KeyCheck::OK, true]);
 $make($storage, $transport)->run(Reporting::ACTION_ON_REQUEST, KEY, SITE);
 $check('after check: nothing due', $transport->take(), []);
 ['report' => $report] = $make($storage, $transport, false)->checkAndReport(KEY, SITE);
 $check('check command, reports off', [$transport->take(), $report], [['GET features'], null]);
 ['check' => $keyCheck] = $make(new MemoryStorage(), $transport)->checkAndReport('', SITE);
-$check('check command, no key', [$transport->take(), $keyCheck->status], [['report check'], ApiKeyCheck::MISSING]);
+$check('check command, no key', [$transport->take(), $keyCheck->status], [['report check'], KeyCheck::MISSING]);
 
 // 9. Broken storage never breaks the caller.
 $storage = new MemoryStorage();
@@ -234,11 +241,25 @@ foreach ($transport->requests as $request) {
 }
 $check('no key in stored state', str_contains(implode('', $storage->values), 'secret-test-key'), false);
 
-// 11. Messages
-$invalid = KeyCheckMessages::for(new ApiKeyCheck(ApiKeyCheck::INVALID, '2026-10-14T08:00:00Z', 401));
+// 11. A state stored by the SDK 0.2 reporter is read as it is: no new `installed` report.
+$storage = new MemoryStorage();
+$transport = new FakeTransport();
+$storage->values['reporter'] = json_encode([
+    'reportedVersions' => '0.3.0|9.1.2|' . PHP_VERSION,
+    'reportedKeyStatus' => 'ok',
+    'lastFailureAt' => null,
+    'keyCheck' => ['status' => 'ok', 'checkedAt' => '2026-10-13T08:00:00Z', 'httpStatus' => 200, 'errorCode' => null, 'fingerprint' => Protocol::apiKeyFingerprint(KEY)],
+], JSON_UNESCAPED_SLASHES);
+$make($storage, $transport)->run(Reporting::ACTION_ON_REQUEST, KEY, SITE);
+$check('SDK 0.2 state: nothing due', $transport->take(), []);
+$check('SDK 0.2 state: same format', array_keys(json_decode($storage->values['reporter'], true)), ['reportedVersions', 'reportedKeyStatus', 'lastFailureAt', 'keyCheck']);
+$check('SDK 0.2 state: key check kept', $make($storage, $transport)->lastCheck()?->checkedAt, '2026-10-13T08:00:00Z');
+
+// 12. Messages
+$invalid = KeyCheckMessages::for(new KeyCheck(KeyCheck::INVALID, '2026-10-14T08:00:00Z', 401));
 $check('invalid message links', str_contains($invalid, 'https://www.supertext.com/en/integrations/api') && str_contains($invalid, 'https://www.supertext.com/person/en/account/signin'), true);
-$check('ok message', KeyCheckMessages::for(new ApiKeyCheck(ApiKeyCheck::OK, '2026-10-14T08:00:00Z', 200)), 'API key checked: the connection to Supertext works.');
-$check('error message status', str_contains(KeyCheckMessages::for(new ApiKeyCheck(ApiKeyCheck::ERROR, '2026-10-14T08:00:00Z', 418)), '(418)'), true);
+$check('ok message', KeyCheckMessages::for(new KeyCheck(KeyCheck::OK, '2026-10-14T08:00:00Z', 200)), 'API key checked: the connection to Supertext works.');
+$check('error message status', str_contains(KeyCheckMessages::for(new KeyCheck(KeyCheck::ERROR, '2026-10-14T08:00:00Z', 418)), '(418)'), true);
 
 foreach ($failures as $failure) {
     fwrite(STDERR, $failure . "\n");
