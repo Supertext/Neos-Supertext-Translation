@@ -141,7 +141,6 @@ if (!check('editor can log in (DEMO_EDITOR_*)', loggedIn)) {
 }
 await page.getByText('Document Tree').first().waitFor();
 
-const content = () => page.frameLocator('iframe[name=neos-content-main]');
 const dimensionButton = () => page.getByRole('button', { name: DIMENSION_LABELS }).first();
 async function switchLanguage(label) {
 	await dimensionButton().click();
@@ -155,8 +154,13 @@ for (const target of TARGETS) {
 		const label = `${target.value}-${slug(title)}`;
 		if (!(await dimensionButton().textContent()).includes(SOURCE.label)) await switchLanguage(SOURCE.label);
 		await page.getByText(title, { exact: true }).first().click();
-		await content().getByRole('heading', { name: title }).first().waitFor();
-		await page.waitForTimeout(1000);
+		// The inspector shows the selected document's title once the page is loaded.
+		const opened = await page.waitForFunction((t) => [...document.querySelectorAll('input, textarea')].some((i) => i.value === t), title, { timeout: 60_000 }).then(() => true, () => false);
+		if (!check(`${label}: page opens in English`, opened)) {
+			await page.screenshot({ path: `${artifacts}${label}-not-opened.png` });
+			continue;
+		}
+		await page.waitForTimeout(1500);
 		await switchLanguage(target.label);
 		const create = page.getByRole('button', { name: 'Create and copy' });
 		if (!check(`${label}: Neos offers "Create and copy"`, await create.waitFor({ timeout: 30_000 }).then(() => true, () => false))) {
