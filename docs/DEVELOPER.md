@@ -134,9 +134,28 @@ php Tests/SdkTest.php            # Guzzle transport + bundled SDK round trip (mo
                                  # needs Guzzle from vendor/ or demo/Packages/Libraries (composer install --working-dir=demo)
 ```
 
-CI (`.github/workflows/ci.yml`) lints all PHP files on 8.2, 8.3 and 8.4, runs the version and reporting tests and syntax-checks the demo entrypoint on every push and pull request; the *PHPStan* job installs the demo's locked Neos, runs `Tests/SdkTest.php` and PHPStan (see *Code quality and security checks*).
+CI (`.github/workflows/ci.yml`) lints all PHP files on 8.2, 8.3 and 8.4, runs the version and reporting tests and syntax-checks the demo entrypoint on every push and pull request; the *PHPStan* job installs the demo's locked Neos, runs `Tests/SdkTest.php` and PHPStan (see *Code quality and security checks*). `.github/workflows/e2e.yml` runs the end-to-end test against the real Supertext API and regenerates the docs screenshots (see *End-to-end tests*).
 
-End to end (manual, before a release): fresh demo, stand-in with `STAND_IN_PREFIX=1`, then (a) `supertext:translate` into French and (b) *Create and copy* into Italian in the UI as the editor; every visible text must be translated, the workspace must show the changes, and publishing must work. `Tests/Docs/screenshots.mjs` runs (b) automatically.
+End to end by hand (before a release): fresh demo, stand-in with `STAND_IN_PREFIX=1`, then (a) `supertext:translate` into French and (b) *Create and copy* into Italian in the UI as the editor; every visible text must be translated, the workspace must show the changes, and publishing must work. `Tests/Docs/screenshots.mjs` runs (b) automatically, `Tests/E2E/live.mjs` runs *Create and copy* against the live API (see *End-to-end tests*).
+
+## End-to-end tests
+
+The PHP tests use fakes. `.github/workflows/e2e.yml` also tests against the **real Supertext API**, so changes on Supertext's side (language codes, regional variants, formatting, rate limits) show up. It runs on every push to `main` that touches the package, the demo or the tests, on pull requests that change the E2E test or workflow, every Monday (05:36 UTC), and by hand (*Actions → E2E → Run workflow*). It builds the demo image once (Docker layer cache in GitHub Actions) and starts it twice on the runner's network (ports 8081 and 8082, MySQL 8.4 service), each with a new database and demo accounts made up for the run:
+
+1. **Real API** (repository or organization secret `SUPERTEXT_API_KEY`; without it these steps are skipped with a warning). Version reports are off (`SUPERTEXT_VERSION_REPORTS=0`), so CI runs don't appear in the Commando Center.
+   - `Tests/E2E/features.mjs` asks the live `GET features` (cost-free, no package or SDK code) whether every pair the demo translates (`en` → `de-CH`, `fr-CH`, `it-CH`) is offered; a missing pair fails the run. Whether the package's own language list matches the API is the SDK's job (its own tests).
+   - `Tests/E2E/live.mjs` (Playwright, as the demo **editor**, through the Neos UI): opens *Text & images* and *Multiple columns* in English (US), switches to Français and then Italiano and clicks *Create and copy* (which also creates and translates the parent pages *Home* and *Features*). It watches the package's `X-Supertext-Translated` / `X-Supertext-Error` response headers (an error or HTTP 5xx fails), then checks the content repository tables (`cr_default_p_graph_*`): the translated pages are in the editor's workspace and nothing in `live` (the editor publishes); every visible content element of each translated page has a variant in the target language and nothing is duplicated; every text field (titles, values with spaces or markup; `uriPathSegment` excluded) is filled and at least 80 % of them changed (single words like "Home" can stay the same; unchanged ones are listed as `note`); no `data-st-id`/placeholder is left; links (`<a `, `node://`, `asset://`), bold, italics and list items are kept; the text is in the target language (common words of each language counted). German isn't translated (Neos.Demo already has German content) and translating again isn't tested (the package has no retranslate action). Each run translates two pages and their parents into two languages.
+2. **Stand-in API**: the docs screenshots (see *Docs screenshots*), so the images don't change with each machine translation. If `docs/images/` changed, a second job pushes the branch `automation/docs-screenshots` and opens (or updates) the pull request "Docs: regenerate screenshots" (only for runs on `main`). This needs *Settings → Actions → General → Allow GitHub Actions to create and approve pull requests*.
+
+If a run fails, the artifact `e2e-debug` has the result screenshots of each step, the container logs, Flow's `Data/Logs` of both demos and the stand-in log. Locally:
+
+```bash
+cd Tests/E2E && npm install && npx playwright install chromium
+# fresh demo (new database) with a real SUPERTEXT_API_KEY, e.g. on port 8081
+SUPERTEXT_API_KEY=… E2E_TARGETS=de-CH,fr-CH,it-CH node features.mjs
+BASE_URL=http://127.0.0.1:8081 DATABASE_URL=mysql://user:pass@127.0.0.1:3306/neos \
+  DEMO_EDITOR_EMAIL=… DEMO_EDITOR_PASSWORD=… npm run live
+```
 
 ## Docs screenshots
 
@@ -241,6 +260,6 @@ The package has no UI of its own today (it hooks into the content repository; ed
 - Content added to the source page after translating isn't carried over automatically.
 - Only `string` properties are translated; value objects (e.g. structured link or list editors) are not.
 - Human (professional) translation orders are not supported yet (the WordPress plugin has them).
-- Tested on Neos 9.1 with the stand-in API; not yet against the live API.
+- Tested on Neos 9.1 with the stand-in API and, by the E2E workflow, against the live API (*Create and copy* into French and Italian).
 - Version reports run inside the back-end request (no after-response hook in Flow middlewares); a job queue would move them out.
 - The language mapping lives in Settings.yaml; there is no back-end module to pick codes from a list yet (`supertext:check` shows unmapped values).
