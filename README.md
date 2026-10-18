@@ -17,6 +17,17 @@ If Supertext fails, the pages are still created, as untranslated copies, and the
 
 Which fields are translated is derived from the node types: inline-editable texts (formatting kept) and Inspector text, text area and rich text fields. Override per property with `options.supertext.translate`.
 
+## Export for translation and import (XLIFF and HTML)
+
+Besides translating with Supertext AI, you can export a document node as a file, have it translated elsewhere and import the result.
+
+- **Where:** the CLI commands `./flow supertext:export <node> <language>…` and `./flow supertext:import <file>` (Neos gets no new UI from this package).
+- **Formats:** XLIFF 1.2 for translation tools such as Trados, memoQ or Phrase (formatting travels as protected tags; several target languages in one file), or HTML (one language per file) for translators or Supertext's web app, which keeps the file's head and `data-st-id` attributes, so the translated file imports as it is.
+- **Import:** the file says what it was exported from and for which language. The translations are written with the same rules as a Supertext AI translation, and a summary shows what was imported and what was skipped: source changed since the export (import those anyway with *Also import texts whose source changed since the export*), not translated, formatting changed, not in the file.
+- **Safe:** files over 10 MB, files from another system and translations that add markup the source doesn't have are refused; uploaded files aren't stored.
+
+Details: [user guide](docs/USER_GUIDE.md#translation-files-export-and-import-xliff-or-html).
+
 ## Documentation
 
 | Guide | For |
