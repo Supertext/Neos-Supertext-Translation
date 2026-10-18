@@ -29,6 +29,8 @@ jobs:
         run: php Tests/PackageVersionTest.php
       - name: Version reports, key check and ping test
         run: php Tests/ReportingTest.php
+      - name: Translation files test
+        run: php Tests/FileTransferTest.php
       - name: Demo entrypoint syntax
         run: sh -n demo/entrypoint.sh
 

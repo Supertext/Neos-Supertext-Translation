@@ -155,7 +155,7 @@ php Tests/SdkTest.php            # Guzzle transport + bundled SDK round trip (mo
                                  # needs Guzzle from vendor/ or demo/Packages/Libraries (composer install --working-dir=demo)
 ```
 
-CI (`.github/workflows/ci.yml`) lints all PHP files on 8.2, 8.3 and 8.4, runs the version and reporting tests and syntax-checks the demo entrypoint on every push and pull request; the *PHPStan* job installs the demo's locked Neos, runs `Tests/SdkTest.php` and PHPStan (see *Code quality and security checks*).
+CI (`.github/workflows/ci.yml`) lints all PHP files on 8.2, 8.3 and 8.4, runs the version, reporting and translation file tests and syntax-checks the demo entrypoint on every push and pull request; the *PHPStan* job installs the demo's locked Neos, runs `Tests/SdkTest.php` and PHPStan (see *Code quality and security checks*).
 
 End to end (manual, before a release): fresh demo, stand-in with `STAND_IN_PREFIX=1`, then (a) `supertext:translate` into French and (b) *Create and copy* into Italian in the UI as the editor; every visible text must be translated, the workspace must show the changes, and publishing must work. `Tests/Docs/screenshots.mjs` runs (b) automatically.
 
