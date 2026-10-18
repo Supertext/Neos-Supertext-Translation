@@ -4,13 +4,7 @@ declare(strict_types=1);
 
 namespace Supertext\NeosTranslation\Command;
 
-use Neos\ContentRepository\Core\ContentRepository;
 use Neos\ContentRepository\Core\Dimension\ContentDimensionId;
-use Neos\ContentRepository\Core\DimensionSpace\DimensionSpacePoint;
-use Neos\ContentRepository\Core\DimensionSpace\OriginDimensionSpacePoint;
-use Neos\ContentRepository\Core\Feature\NodeVariation\Command\CreateNodeVariant;
-use Neos\ContentRepository\Core\Projection\ContentGraph\ContentSubgraphInterface;
-use Neos\ContentRepository\Core\Projection\ContentGraph\Filter\FindChildNodesFilter;
 use Neos\ContentRepository\Core\Projection\ContentGraph\VisibilityConstraints;
 use Neos\ContentRepository\Core\SharedModel\ContentRepository\ContentRepositoryId;
 use Neos\ContentRepository\Core\SharedModel\Node\NodeAggregateId;
@@ -19,9 +13,10 @@ use Neos\ContentRepositoryRegistry\ContentRepositoryRegistry;
 use Neos\Flow\Annotations as Flow;
 use Neos\Flow\Cli\CommandController;
 use Neos\Flow\Security\Context as SecurityContext;
-use Neos\Neos\Domain\Service\NodeTypeNameFactory;
 use Supertext\NeosTranslation\Configuration\PackageVersion;
 use Supertext\NeosTranslation\Configuration\Settings;
+use Supertext\NeosTranslation\Files\FileTransfer;
+use Supertext\NeosTranslation\Files\FileTransferException;
 use Supertext\NeosTranslation\PluginHealth\KeyCheck;
 use Supertext\NeosTranslation\Reporting\KeyCheckMessages;
 use Supertext\NeosTranslation\Reporting\Reporting;
@@ -30,6 +25,8 @@ use Supertext\NeosTranslation\Sdk\V1\SupertextException;
 use Supertext\NeosTranslation\Service\ErrorMessages;
 use Supertext\NeosTranslation\Service\LanguageResolver;
 use Supertext\NeosTranslation\Service\NodeTranslator;
+use Supertext\NeosTranslation\Service\NodeVariants;
+use Supertext\NeosTranslation\Service\TranslationFileService;
 
 /**
  * Supertext translation commands
@@ -53,6 +50,12 @@ class SupertextCommandController extends CommandController
 
     #[Flow\Inject]
     protected SecurityContext $securityContext;
+
+    #[Flow\Inject]
+    protected NodeVariants $nodeVariants;
+
+    #[Flow\Inject]
+    protected TranslationFileService $translationFiles;
 
     /**
      * Translate a page and its content into another language
@@ -86,8 +89,8 @@ class SupertextCommandController extends CommandController
         $graph = $cr->getContentGraph($workspaceName);
 
         $sourceDsp = $source !== null
-            ? $this->dimensionSpacePoint($cr, $dimension, $source)
-            : $this->defaultDimensionSpacePoint($cr);
+            ? $this->nodeVariants->dimensionSpacePoint($cr, $dimension, $source)
+            : $this->nodeVariants->defaultDimensionSpacePoint($cr);
         $targetDsp = $sourceDsp->vary($dimension, $language);
         $sourceSubgraph = $graph->getSubgraph($sourceDsp, VisibilityConstraints::withoutRestrictions());
         $targetSubgraph = $graph->getSubgraph($targetDsp, VisibilityConstraints::withoutRestrictions());
@@ -99,10 +102,10 @@ class SupertextCommandController extends CommandController
         }
 
         $this->securityContext->withoutAuthorizationChecks(function () use ($cr, $workspaceName, $start, $sourceSubgraph, $targetSubgraph, $targetDsp, $subpages, $copyContent) {
-            $created = $this->adopt($cr, $workspaceName, $start->aggregateId, $sourceSubgraph, $targetSubgraph, $targetDsp, $copyContent);
+            $created = $this->nodeVariants->adopt($cr, $workspaceName, $start->aggregateId, $sourceSubgraph, $targetSubgraph, $targetDsp, $copyContent);
             if ($subpages) {
-                foreach ($this->descendants($cr, $sourceSubgraph, $start->aggregateId, true) as $page) {
-                    $created += $this->adopt($cr, $workspaceName, $page, $sourceSubgraph, $targetSubgraph, $targetDsp, $copyContent);
+                foreach ($this->nodeVariants->descendants($cr, $sourceSubgraph, $start->aggregateId, true) as $page) {
+                    $created += $this->nodeVariants->adopt($cr, $workspaceName, $page, $sourceSubgraph, $targetSubgraph, $targetDsp, $copyContent);
                 }
             }
             $this->outputLine('Created %d node variant(s) in %s; translating with Supertext...', [$created, $targetDsp->toJson()]);
@@ -121,6 +124,107 @@ class SupertextCommandController extends CommandController
                 $this->quit(1);
             }
         });
+    }
+
+    /**
+     * Export a page or content node for translation (XLIFF 1.2 or HTML)
+     *
+     * Writes the texts Supertext would translate (the page, its content elements and their
+     * tethered children) to a file for a translation tool, a translator or Supertext's web
+     * app. Import the translated file with supertext:import. Nothing is sent to Supertext.
+     *
+     * Examples:
+     *   ./flow supertext:export 3c9a4f6d-... fr it                  (XLIFF, both languages in one file)
+     *   ./flow supertext:export 3c9a4f6d-... fr --format=html --output=page-fr.html
+     *
+     * @param string $node Node aggregate id of the page or content node
+     * @param string $languages Target language dimension value(s), e.g. fr (more as further arguments or comma-separated; exactly one for HTML)
+     * @param string $format xliff (for translation tools, default) or html (one language per file)
+     * @param string|null $output File to write (default: neos-<node>-<language>.xlf or .html in the current directory; - for standard output)
+     * @param string|null $source Source language dimension value (default: the site's default language)
+     * @param string $workspace Workspace to read from
+     * @param string $contentRepository Content repository id
+     */
+    public function exportCommand(
+        string $node,
+        string $languages,
+        string $format = 'xliff',
+        ?string $output = null,
+        ?string $source = null,
+        string $workspace = 'live',
+        string $contentRepository = 'default',
+    ): void {
+        $targets = [];
+        foreach ([$languages, ...$this->request->getExceedingArguments()] as $argument) {
+            foreach (explode(',', (string)$argument) as $target) {
+                if (trim($target) !== '') {
+                    $targets[] = trim($target);
+                }
+            }
+        }
+        try {
+            $file = $this->translationFiles->export($node, $targets, strtolower($format), $source, $workspace, $contentRepository);
+        } catch (FileTransferException $e) {
+            $this->outputLine('<error>%s</error>', [$e->getMessage()]);
+            $this->quit(1);
+        }
+        if ($output === '-') {
+            $this->output($file['body']);
+            return;
+        }
+        $path = $output ?? $file['name'];
+        if (@file_put_contents($path, $file['body']) === false) {
+            $this->outputLine('<error>Could not write %s.</error>', [$path]);
+            $this->quit(1);
+        }
+        $this->outputLine('<success>Exported for translation: %s (%s)</success>', [$path, $file['type']]);
+    }
+
+    /**
+     * Import a translated XLIFF or HTML file
+     *
+     * Reads a file exported with supertext:export and writes the translations into the
+     * target language, like a translation with Supertext: missing language variants are
+     * created first (as "Create and copy" does). Prints a summary per language. Texts whose
+     * source changed since the export are skipped unless --include-changed is given.
+     *
+     * Example: ./flow supertext:import neos-3c9a4f6d-...-fr.xlf
+     *
+     * @param string $file The translated file (XLIFF or HTML, at most 10 MB)
+     * @param bool $includeChanged Also import texts whose source changed since the export
+     * @param string $workspace Workspace to write to. "live" publishes immediately.
+     * @param string $contentRepository Content repository id
+     */
+    public function importCommand(string $file, bool $includeChanged = false, string $workspace = 'live', string $contentRepository = 'default'): void
+    {
+        try {
+            if (!is_file($file) || !is_readable($file)) {
+                $this->outputLine('<error>Can\'t read %s.</error>', [$file]);
+                $this->quit(1);
+            }
+            // Refuse large files before reading them.
+            FileTransfer::assertFileSize((int)filesize($file));
+            $results = $this->translationFiles->import((string)file_get_contents($file), $includeChanged, $workspace, $contentRepository);
+        } catch (FileTransferException $e) {
+            $this->outputLine('<error>%s</error>', [$e->getMessage()]);
+            $this->quit(1);
+        }
+
+        $failed = false;
+        foreach ($results as $result) {
+            $this->outputLine('%s -> %s (node %s):', [$result['source'] ?: '?', $result['target'] ?: '?', $result['node'] ?: $result['reference']]);
+            if (isset($result['error'])) {
+                $failed = true;
+                $this->outputLine('  <error>%s</error>', [ErrorMessages::forException($result['error'], $result['target'])]);
+                continue;
+            }
+            foreach (FileTransfer::summary($result) as $line) {
+                $this->outputLine('  %s', [$line]);
+            }
+        }
+        if ($failed) {
+            $this->quit(1);
+        }
     }
 
     /**
@@ -201,73 +305,5 @@ class SupertextCommandController extends CommandController
             }
         }
         return $ok;
-    }
-
-    /** Creates missing variants of the node, its missing parents and (optionally) its content. */
-    private function adopt(ContentRepository $cr, WorkspaceName $workspace, NodeAggregateId $id, ContentSubgraphInterface $source, ContentSubgraphInterface $target, DimensionSpacePoint $targetDsp, bool $copyContent): int
-    {
-        $missing = [];
-        $current = $id;
-        while ($current !== null && $target->findNodeById($current) === null) {
-            $missing[] = $current;
-            $current = $source->findParentNode($current)?->aggregateId;
-        }
-        $created = 0;
-        foreach (array_reverse($missing) as $missingId) {
-            $created += $this->createVariant($cr, $workspace, $missingId, $source, $target, $targetDsp);
-        }
-        if ($copyContent) {
-            foreach ($this->descendants($cr, $source, $id, false) as $contentId) {
-                $created += $this->createVariant($cr, $workspace, $contentId, $source, $target, $targetDsp);
-            }
-        }
-        return $created;
-    }
-
-    private function createVariant(ContentRepository $cr, WorkspaceName $workspace, NodeAggregateId $id, ContentSubgraphInterface $source, ContentSubgraphInterface $target, DimensionSpacePoint $targetDsp): int
-    {
-        $node = $source->findNodeById($id);
-        // Tethered nodes (e.g. a page's "main" collection) are created together with their parent.
-        if ($node === null || $node->classification->isTethered() || $target->findNodeById($id) !== null) {
-            return 0;
-        }
-        $cr->handle(CreateNodeVariant::create($workspace, $id, $node->originDimensionSpacePoint, OriginDimensionSpacePoint::fromDimensionSpacePoint($targetDsp)));
-        return 1;
-    }
-
-    /**
-     * Pages ($documents = true): all subpages. Content ($documents = false): all content
-     * below the page, without descending into subpages. Parents come before children.
-     *
-     * @return list<NodeAggregateId>
-     */
-    private function descendants(ContentRepository $cr, ContentSubgraphInterface $subgraph, NodeAggregateId $parent, bool $documents): array
-    {
-        $result = [];
-        foreach ($subgraph->findChildNodes($parent, FindChildNodesFilter::create()) as $child) {
-            $isDocument = $cr->getNodeTypeManager()->getNodeType($child->nodeTypeName)?->isOfType(NodeTypeNameFactory::NAME_DOCUMENT) ?? false;
-            if ($isDocument !== $documents) {
-                continue;
-            }
-            $result[] = $child->aggregateId;
-            array_push($result, ...$this->descendants($cr, $subgraph, $child->aggregateId, $documents));
-        }
-        return $result;
-    }
-
-    private function dimensionSpacePoint(ContentRepository $cr, ContentDimensionId $dimension, string $value): DimensionSpacePoint
-    {
-        return $this->defaultDimensionSpacePoint($cr)->vary($dimension, $value);
-    }
-
-    private function defaultDimensionSpacePoint(ContentRepository $cr): DimensionSpacePoint
-    {
-        // The first root value of every dimension, in configuration order (Neos.Demo: en_US).
-        $coordinates = [];
-        foreach ($cr->getContentDimensionSource()->getContentDimensionsOrderedByPriority() as $dimension) {
-            $roots = $dimension->getRootValues();
-            $coordinates[$dimension->id->value] = reset($roots)->value;
-        }
-        return DimensionSpacePoint::fromArray($coordinates);
     }
 }

@@ -10,10 +10,11 @@ use Supertext\NeosTranslation\Sdk\V1\Languages;
 
 /**
  * Maps language dimension values ("de", "en_US") to Supertext language codes with the
- * Supertext SDK's rules (the same in every Supertext plugin, nothing guessed): the
+ * Supertext SDK's rules (the same in every Supertext plugin, defaults only where obvious): the
  * language mapping (`languages.<value>.code`) wins; otherwise a dimension value that
  * equals a Supertext code apart from case and "_"/"-" is used ("en_US" => "en-US",
- * "es"); anything else throws SupertextException `unsupported_language` before
+ * "es"); otherwise the SDK's default ("de" => "de-DE", "es_ES" => "es");
+ * anything else ("en_UK", "gsw") throws SupertextException `unsupported_language` before
  * anything is sent. Sources are bare ("en_US" => "en", a mapped "de-CH" => "de").
  */
 #[Flow\Scope('singleton')]
@@ -35,7 +36,7 @@ class LanguageResolver
         return self::primary($source) !== self::primary($target);
     }
 
-    /** Supertext target code: the mapped code, else an exact Supertext code ("en_US" => "en-US"). */
+    /** Supertext target code: the mapped code, else an exact Supertext code ("en_US" => "en-US"), else the SDK's default ("fr" => "fr-FR"). */
     public function targetCode(string $dimensionValue): string
     {
         return Languages::target($dimensionValue, $this->settings->getLanguageMapping());

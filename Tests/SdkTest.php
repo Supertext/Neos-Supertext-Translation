@@ -46,7 +46,8 @@ $check = static function (string $name, mixed $actual, mixed $expected) use (&$f
 };
 
 // 1. Neos language dimension values, as LanguageResolver hands them to the SDK: the
-//    mapping (languages.<value>.code) wins, else an exact Supertext code, else nothing is sent.
+//    mapping (languages.<value>.code) wins, else an exact Supertext code, else the SDK's
+//    default where one is obvious (SDK 0.4.0), else nothing is sent.
 $mapping = Settings::mappingFrom([
     'de' => ['code' => 'de-CH', 'politeness' => 'more'],
     'en_UK' => ['code' => 'en-GB'],
@@ -61,15 +62,16 @@ $check('target exact bare es', Languages::target('es', $mapping), 'es');
 $check('target exact de_ch', Languages::target('de_ch'), 'de-CH');
 $check('source en_US', Languages::source('en_US', $mapping), 'en');
 $check('source mapped de (sent bare)', Languages::source('de', $mapping), 'de');
-$check('target unmapped fr', LanguageResolver::resolveTarget('fr', $mapping), null);
-$check('target no default region es-ES', LanguageResolver::resolveTarget('es_ES', $mapping), null);
+$check('target unmapped fr: default', LanguageResolver::resolveTarget('fr', $mapping), 'fr-FR');
+$check('target region of a bare code es_ES: default', LanguageResolver::resolveTarget('es_ES', $mapping), 'es');
+$check('target without default en_IE', LanguageResolver::resolveTarget('en_IE', $mapping), null);
 try {
-    Languages::target('fr', $mapping);
-    $failures[] = 'expected unsupported_language for fr';
+    Languages::target('gsw', $mapping);
+    $failures[] = 'expected unsupported_language for gsw';
 } catch (SupertextException $e) {
-    $check('unmapped fr: error code', $e->errorCode, 'unsupported_language');
-    $check('unmapped fr: message names the setting', ErrorMessages::forException($e),
-        "The language fr has no Supertext language yet. Ask your administrator to map it (Supertext.NeosTranslation.languages.fr.code in Settings.yaml, e.g. 'de-CH').");
+    $check('unmapped gsw: error code', $e->errorCode, 'unsupported_language');
+    $check('unmapped gsw: message names the setting', ErrorMessages::forException($e),
+        "The language gsw has no Supertext language yet. Ask your administrator to map it (Supertext.NeosTranslation.languages.gsw.code in Settings.yaml, e.g. 'de-CH').");
 }
 $check('politeness unsupported for en-US', LanguageResolver::politenessUnsupported('en-US', 'more'), true);
 $check('politeness supported for de-CH', LanguageResolver::politenessUnsupported('de-CH', 'more'), false);

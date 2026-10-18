@@ -35,7 +35,9 @@ export SUPERTEXT_API_KEY=...        # or Supertext.NeosTranslation.apiKey
 ./flow supertext:check
 ```
 
-Map every language that isn't a Supertext code itself (e.g. `de` → `de-CH`) in `Supertext.NeosTranslation.languages`; `supertext:check` lists them. The package sends version information (no content, no key) to Supertext unless you turn it off; see the installation guide.
+Map a language in `Supertext.NeosTranslation.languages` if it isn't a Supertext code itself and has no obvious default (e.g. `en_UK` → `en-GB`), or to choose another variant (`de` → `de-CH`); `supertext:check` lists them.
+
+Translation outside Neos (translation tools, translators, Supertext's web app): `./flow supertext:export <node> <language>` writes an XLIFF 1.2 or HTML file, `./flow supertext:import <file>` imports the translated file. The package sends version information (no content, no key) to Supertext unless you turn it off; see the installation guide.
 
 ## Demo
 

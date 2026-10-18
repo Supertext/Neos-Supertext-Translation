@@ -32,7 +32,12 @@ Neos UI "Create and copy"  ──►  N × CreateNodeVariant   (one per page/con
 | `Reporting\KeyCheckMessages` | The Commando Center's key-check messages (English) with the bare Supertext URLs. |
 | `Api\SupertextClientFactory` | Creates the SDK's `Supertext\NeosTranslation\Sdk\V1\Client` from the settings (key, endpoint, poll interval and timeout, User-Agent `Neos-Supertext-Translation/<version>`). |
 | `Api\GuzzleHttpTransport` | The SDK's `HttpTransport` over Guzzle (a Neos dependency), so ext-curl isn't required. |
-| `Command\SupertextCommandController` | `supertext:translate` (what *Create and copy* does, plus `--subpages`; runs `onRequest` for the version reports) and `supertext:check` (package version from `Configuration\PackageVersion`, the language dimension values with their Supertext codes and tone warnings, the API key check with its time, and a `check` report). Runs without authorization checks. |
+| `Command\SupertextCommandController` | `supertext:translate` (what *Create and copy* does, plus `--subpages`; runs `onRequest` for the version reports), `supertext:export` / `supertext:import` (translation files) and `supertext:check` (package version from `Configuration\PackageVersion`, the language dimension values with their Supertext codes and tone warnings, the API key check with its time, and a `check` report). Runs without authorization checks. |
+| `Service\SegmentCollector` | What is translated of a node (its translatable properties and those of its tethered descendants; with content: every content node below a page), keyed `<node aggregate id>.<property>`. Shared by API translations and translation files. |
+| `Service\TranslationWriter` | Writes translations with `SetNodeProperties` (only properties the collector offered; a document's translated title also rebuilds `uriPathSegment`). Shared by API translations and file imports. |
+| `Service\NodeVariants` | Creates missing language variants like *Create and copy* (`adopt()`: the node, missing parents, optionally the content) and finds dimension space points; used by `supertext:translate` and `supertext:import`. |
+| `Files\FileTransfer`, `Files\FileTransferException` | Plain-PHP glue to the SDK's `Files\TranslationFiles` for `supertext:export`/`supertext:import` (see *Translation files*). Unit-tested without Neos. |
+| `Service\TranslationFileService` | Flow side of the translation files: languages, node, segments (`SegmentCollector`), missing variants (`NodeVariants`) and the write-back (`TranslationWriter`). |
 | `Configuration\Settings` | Typed settings; `SUPERTEXT_API_KEY` / `SUPERTEXT_API_ENDPOINT` win. |
 | `Configuration\PackageVersion` | Installed package version via `Composer\InstalledVersions::getPrettyVersion('supertext/neos-translation')`, `unknown` if Composer can't tell. No hardcoded copy. |
 
@@ -67,11 +72,26 @@ Every Supertext plugin reports to the Supertext Commando Center (Commando-Center
 - Update it with `scripts/vendor-plugin-health.sh [commit-or-branch]`, e.g. `scripts/vendor-plugin-health.sh plugin-health-v0.1.0` (default `main`; `PLUGIN_HEALTH_DIR=<clone>` uses a local clone of Commando-Center-Supertext-Translation), run the tests, and commit with a CHANGELOG entry.
 - Never edit the copy: fix it in Commando-Center-Supertext-Translation → `plugin-health/`, then re-run the script.
 
+## Translation files (supertext:export, supertext:import)
+
+SDK 0.5.0 adds `Files\TranslationFiles` (XLIFF 1.2 and HTML, outside `V1`, no API call; bundled like the rest of the SDK, `scripts/vendor-sdk.sh` rewrites its namespace too). The package has no UI, so they are CLI commands next to `supertext:translate`:
+
+```bash
+./flow supertext:export <node> <language> [<language> …] [--format=xliff|html] [--output=<file>|-] [--source=<value>] [--workspace=live] [--content-repository=default]
+./flow supertext:import <file> [--include-changed] [--workspace=live] [--content-repository=default]
+```
+
+- **Segments:** `SegmentCollector`, the same collector as `NodeTranslator` uses for API translations: a page with its content elements (as `supertext:translate` copies them) or a content node with its tethered children, keys `<node aggregate id>.<property>`, blank values left out. So the import's write-back is `TranslationWriter`, the same as for API results.
+- **Job metadata:** `plugin` = `Neos-Supertext-Translation`; `reference` = `node:<node aggregate id>:<source dimension value>:<target dimension value>` (`FileTransfer::reference()` / `parseReference()`), e.g. `node:3c9a4f6d-…:en_US:fr`; other dimensions use their default (root) values, as in `supertext:translate`. `sourceLanguage`/`targetLanguage` are the codes `Languages::source()`/`target()` give with the `languages.*.code` mapping, else the dimension value itself (`_` → `-`), so an unmapped language never blocks an export.
+- **Files:** XLIFF holds one `<file>` per target language; HTML exactly one language. Default name `neos-<node id>-<language>.xlf` (`neos-<node id>.xlf` for several languages, `.html`); `--output=-` writes to standard output.
+- **Import:** files over 10 MB are refused before reading (`FileTransfer::MAX_FILE_BYTES`); `TranslationFiles::read()`; per job: `plugin` must be ours (*other system*), the reference must parse and the node must exist in the source language (*not found*), both dimension values must exist (*no language*). The segments are collected again and passed to `importTranslations()`; `ok` (and `source_changed` with `--include-changed`) are written, `untranslated`, `invalid_markup` and `missing` never. Missing variants are created first with `NodeVariants::adopt()` (like *Create and copy*; the hook's queued API translations are dropped, the file provides the texts), then `TranslationWriter` writes into the given workspace without authorization checks (CLI). Per job the command prints the counts (`FileTransfer::summary()`); it exits with 1 if a job failed.
+- Tests: `php Tests/FileTransferTest.php` (reference round trip, export keys and mapping, import rules, glue errors, size limit; no Neos needed).
+
 ## Supertext API protocol
 
 The package talks to Supertext through the official **Supertext SDK for PHP** ([Supertext-API-SDK-and-Guide](https://github.com/Supertext/Supertext-API-SDK-and-Guide/tree/main/sdk/php), MIT). The SDK implements the protocol below, the HTML packing (one `data-st-id` element per property), the list of Supertext languages (`V1\Languages`), the API key check (`Client::checkApiKey()`; the Commando Center reports are Supertext Plugin Health's, see above), the 429 retries and stable error codes (`SupertextException::$errorCode`); it is tested against the shared test vectors of all Supertext SDKs. Error messages (English) come from the SDK and end up in the log and the `X-Supertext-Error` header.
 
-**Bundled copy:** the package ships the SDK in `lib/supertext-sdk/` (sources, `LICENSE`, `COMMIT` with the SDK commit, a short README), with the namespace changed from `Supertext\Sdk` to `Supertext\NeosTranslation\Sdk` (API v1 classes in `Sdk\V1`, `src/V1/`; the HTTP transport in `Sdk\Http`) and autoloaded by the package's `composer.json`. Sites install only the package; another package that requires `supertext/supertext-sdk` itself can't clash with it. This stays so after the SDK is on Packagist. `Configuration/Settings.yaml` limits Flow's object management to the package's own classes (`Neos.Flow.object.includeClasses`: everything under `Supertext\NeosTranslation\` except `Sdk\`, `PluginHealth\` and the plain-PHP `Reporting\Reporting` and `Reporting\PluginHealthTransport`). Without it Flow proxies the SDK's classes, and the proxies break the SDK's named constructor arguments (`Unknown named parameter $baseUrl`). The package's namespace must stay the **first** `psr-4` entry in `composer.json`: Flow derives the package key and install folder from it.
+**Bundled copy:** the package ships the SDK in `lib/supertext-sdk/` (sources, `LICENSE`, `COMMIT` with the SDK commit, a short README), with the namespace changed from `Supertext\Sdk` to `Supertext\NeosTranslation\Sdk` (API v1 classes in `Sdk\V1`, `src/V1/`; the HTTP transport in `Sdk\Http`) and autoloaded by the package's `composer.json`. Sites install only the package; another package that requires `supertext/supertext-sdk` itself can't clash with it. This stays so after the SDK is on Packagist. `Configuration/Settings.yaml` limits Flow's object management to the package's own classes (`Neos.Flow.object.includeClasses`: everything under `Supertext\NeosTranslation\` except `Sdk\`, `PluginHealth\`, `Files\` and the plain-PHP `Reporting\Reporting` and `Reporting\PluginHealthTransport`). Without it Flow proxies the SDK's classes, and the proxies break the SDK's named constructor arguments (`Unknown named parameter $baseUrl`). The package's namespace must stay the **first** `psr-4` entry in `composer.json`: Flow derives the package key and install folder from it.
 
 - Update it with `scripts/vendor-sdk.sh [commit-or-branch]` (default `main`; `SDK_DIR=<clone>` uses a local clone), run the tests, and commit with a CHANGELOG entry.
 - Never edit the copy: fix the SDK in its own repository, then re-run the script. PHPStan analyses `Classes/` only.
@@ -87,10 +107,10 @@ Header `Authorization: Supertext-Auth-Key <key>`; the SDK strips a pasted prefix
 
 ### Language codes
 
-Supertext accepts only the codes of `GET features` (the SDK's `V1\Languages::TARGETS` / `SOURCES`): targets are regional only for German, English, French, Italian and Portuguese (`de-CH`, `en-US`, `pt-BR`), have a script for Chinese and Serbian (`zh-Hans`, `sr-Latn`), a dialect for Swiss German (`gsw-u-sd-chzh`) and are **bare for all others** (`es`, `nl`, `sl`). Sources are bare. The old default regions (`es-ES`, `sl-SI`, `zh-CN`) are rejected by the live API, so nothing is guessed any more (SDK 0.2.0):
+Supertext accepts only the codes of `GET features` (the SDK's `V1\Languages::TARGETS` / `SOURCES`): targets are regional only for German, English, French, Italian and Portuguese (`de-CH`, `en-US`, `pt-BR`), have a script for Chinese and Serbian (`zh-Hans`, `sr-Latn`), a dialect for Swiss German (`gsw-u-sd-chzh`) and are **bare for all others** (`es`, `nl`, `sl`). Sources are bare. The old default regions (`es-ES`, `sl-SI`, `zh-CN`) are rejected by the live API, so nothing is guessed any more (SDK 0.2.0); since SDK 0.4.0 an unmapped value gets the SDK's default where one is obvious:
 
 - `Configuration\Settings::getLanguageMapping()` builds one mapping, dimension value → code, from `languages.<value>.code`.
-- Target: `Languages::target($value, $mapping)`: the mapping wins (sent as it is, even a code the SDK doesn't list yet), else a value equal to a Supertext code apart from case and `_`/`-` (`en_US` → `en-US`), else `SupertextException` `unsupported_language` before anything is sent.
+- Target: `Languages::target($value, $mapping)`: the mapping wins (sent as it is, even a code the SDK doesn't list yet), else a value equal to a Supertext code apart from case and `_`/`-` (`en_US` → `en-US`), else the SDK's default (`de` → `de-DE`, `fr` → `fr-FR`, `en` → `en-US`, `es_ES` → `es`, `zh_TW` → `zh-Hant`), else `SupertextException` `unsupported_language` before anything is sent (`en_UK`, `en_IE`, `de_LI`, `gsw` need a mapping).
 - Source: `Languages::source($value, $mapping)`, same mapping: a mapped `de-CH` is sent as `de`, `en_US` as `en`.
 - Politeness is sent as configured; `Languages::supportsPoliteness()` false (e.g. `en-US`, `rm`) means Supertext answers `unsupported_feature`, and `supertext:check` warns beforehand (`LanguageResolver::politenessUnsupported()`).
 - `NodeTranslator` resolves both codes before calling the client; errors become `TranslationResult::$error` through `ErrorMessages`.
@@ -130,6 +150,7 @@ With PHP's built-in server, use a router that serves existing files and sets `SC
 ```bash
 php Tests/PackageVersionTest.php # version helper (Composer InstalledVersions), no Neos needed
 php Tests/ReportingTest.php      # version reports, key check, ping, state storage, SDK 0.2 state (bundled SDK + Plugin Health, fake transport and storage), no Neos needed
+php Tests/FileTransferTest.php   # translation files: export/import glue around the SDK's TranslationFiles, no Neos needed
 php Tests/SdkTest.php            # Guzzle transport + bundled SDK round trip (mocked HTTP), language mapping/unmapped errors, error codes;
                                  # needs Guzzle from vendor/ or demo/Packages/Libraries (composer install --working-dir=demo)
 ```

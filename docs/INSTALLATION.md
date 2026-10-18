@@ -79,10 +79,11 @@ If the key is wrong, it says *Supertext rejected the API key* (or *No API key is
 
 ## 3. Languages
 
-The package translates whenever a page or content element is created in another value of the **language dimension**. Every dimension value needs a **Supertext language code**: Supertext accepts only its own codes (see *Supertext language codes* below) and the package never guesses one.
+The package translates whenever a page or content element is created in another value of the **language dimension**. Every dimension value needs a **Supertext language code**: Supertext accepts only its own codes (see *Supertext language codes* below); the package uses a default only where one is obvious.
 
 - A dimension value that already **is** a Supertext code, apart from upper/lower case and `_`/`-`, works without setup: `en_US` → `en-US`, `es` → `es`, `de_CH` → `de-CH`.
-- Any other value must be **mapped** with `languages.<value>.code`: `de` (Germany, Austria or Switzerland?), `fr`, `it`, `en`, `pt`, `zh`, or `en_UK` (Supertext's code is `en-GB`). Unmapped, translating into or from that language stops before anything is sent, with *The language de has no Supertext language yet. Ask your administrator to map it (Supertext.NeosTranslation.languages.de.code in Settings.yaml, e.g. 'de-CH').*
+- Otherwise the Supertext default, where there is an obvious one: `de` → `de-DE`, `en` → `en-US`, `fr` → `fr-FR`, `it` → `it-IT`, `pt` → `pt-PT`, `zh` → `zh-Hans`, `sr` → `sr-Latn`, `zh_TW` → `zh-Hant`, a region of a bare code → the bare code (`es_ES` → `es`, `nl_NL` → `nl`). Map the value if you want another variant, e.g. `de` → `de-CH`.
+- Any other value must be **mapped** with `languages.<value>.code`, e.g. `en_UK` (Supertext's code is `en-GB`), `en_IE`, `de_LI`, `gsw`. Unmapped, translating into or from that language stops before anything is sent, with *The language en_UK has no Supertext language yet. Ask your administrator to map it (Supertext.NeosTranslation.languages.en_UK.code in Settings.yaml, e.g. 'de-CH').*
 
 The same mapping is used when the language is the source: a mapped `de-CH` is sent as source `de` (sources have no region).
 
@@ -147,6 +148,10 @@ Open a page in the backend, switch the language menu to a language the page does
 ```bash
 ./flow supertext:translate --node <page node id> --language fr --workspace user-<yourname>
 ```
+
+### Translation files (export and import)
+
+`./flow supertext:export` and `./flow supertext:import` (see the [user guide](USER_GUIDE.md#translation-files-export-and-import-xliff-or-html)) need nothing to configure and no API key: they never call the Supertext API. Like `supertext:translate` they run on the server's command line without Neos authorization checks, so whoever may run `./flow` may export and import. Files larger than 10 MB are refused before they are read; nothing is stored besides the translated content. The import writes to the workspace given with `--workspace` (default `live`, which publishes immediately; use a user workspace such as `user-<name>` to review first).
 
 ## 5. Version information and the API key check
 
@@ -233,8 +238,10 @@ Translations already made stay in place; they are ordinary Neos content.
 | `Could not reach Supertext` | The server can't make outbound HTTPS calls to the endpoint; check firewall and proxy (Guzzle honours `HTTPS_PROXY`). |
 | `Timed out waiting for the Supertext translation` | Very long pages; raise `pollTimeout` (and PHP's `max_execution_time` / proxy timeouts accordingly). |
 | "Root Node Aggregates cannot be varied" when creating a page in a new language | The language was added after the content was imported. Extend the root node to it (see *Languages*). |
+| `supertext:import`: *The file is too large (at most 10 MB)* | Split the work into smaller files (one page or language per file). |
+| `supertext:import`: *This file belongs to another system* / *wasn't exported by the Supertext package* | The file comes from another CMS's Supertext plugin, or its header (HTML `<head>`, XLIFF `<file>` attributes) was removed. Export again and keep the header. |
 | A field isn't translated | Check its property type and editor (see *All settings*), or force it with `options.supertext.translate: true`. |
 
 ## Security note
 
-The API key is only read from the environment or the settings and is sent only to the configured endpoint; the version information never contains it (only whether one is set and its check result), and only a SHA-256 fingerprint of it is stored locally. Translation runs with the permissions of the editor who created the page in the new language; the CLI command runs without authorization checks, like other Neos CLI commands.
+The API key is only read from the environment or the settings and is sent only to the configured endpoint; the version information never contains it (only whether one is set and its check result), and only a SHA-256 fingerprint of it is stored locally. Translation runs with the permissions of the editor who created the page in the new language; the CLI commands (`supertext:translate`, `supertext:import`) run without authorization checks, like other Neos CLI commands. Imported files are treated as untrusted (size limit, no DTDs, markup only from the current source, see the developer guide).
