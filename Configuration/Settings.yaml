@@ -64,6 +64,20 @@ Supertext:
       - 'uriPathSegment'
 
 Neos:
+  Neos:
+    modules:
+      management:
+        submodules:
+          # Management → Supertext: Export for translation / Import translation
+          # (access: Policy.yaml, Supertext.NeosTranslation:Module.TranslationFiles).
+          supertext:
+            label: 'Supertext.NeosTranslation:Main:module.label'
+            description: 'Supertext.NeosTranslation:Main:module.description'
+            controller: 'Supertext\NeosTranslation\Controller\TranslationFilesController'
+            icon: 'fas fa-language'
+            mainStylesheet: 'Lite'
+            privilegeTarget: 'Supertext.NeosTranslation:Module.TranslationFiles'
+
   ContentRepositoryRegistry:
     presets:
       'default':

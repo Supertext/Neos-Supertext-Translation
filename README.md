@@ -21,7 +21,7 @@ Which fields are translated is derived from the node types: inline-editable text
 
 Besides translating with Supertext AI, you can export a document node as a file, have it translated elsewhere and import the result.
 
-- **Where:** the CLI commands `./flow supertext:export <node> <language>…` and `./flow supertext:import <file>` (Neos gets no new UI from this package).
+- **Where:** the back-end module **Management → Supertext** for editors (choose a page, the languages and the format, download; upload the translated file, see the summary), working in the editor's own workspace so imported translations are reviewed and published as usual. For administrators and scripts also the CLI commands `./flow supertext:export <node> <language>…` and `./flow supertext:import <file>`.
 - **Formats:** XLIFF 1.2 for translation tools such as Trados, memoQ or Phrase (formatting travels as protected tags; several target languages in one file), or HTML (one language per file) for translators or Supertext's web app, which keeps the file's head and `data-st-id` attributes, so the translated file imports as it is.
 - **Import:** the file says what it was exported from and for which language. The translations are written with the same rules as a Supertext AI translation, and a summary shows what was imported and what was skipped: source changed since the export (import those anyway with *Also import texts whose source changed since the export*), not translated, formatting changed, not in the file.
 - **Safe:** files over 10 MB, files from another system and translations that add markup the source doesn't have are refused; uploaded files aren't stored.
@@ -48,7 +48,7 @@ export SUPERTEXT_API_KEY=...        # or Supertext.NeosTranslation.apiKey
 
 Map a language in `Supertext.NeosTranslation.languages` if it isn't a Supertext code itself and has no obvious default (e.g. `en_UK` → `en-GB`), or to choose another variant (`de` → `de-CH`); `supertext:check` lists them.
 
-Translation outside Neos (translation tools, translators, Supertext's web app): `./flow supertext:export <node> <language>` writes an XLIFF 1.2 or HTML file, `./flow supertext:import <file>` imports the translated file. The package sends version information (no content, no key) to Supertext unless you turn it off; see the installation guide.
+Translation outside Neos (translation tools, translators, Supertext's web app): editors use **Management → Supertext** to export an XLIFF 1.2 or HTML file and import the translated file; on the command line `./flow supertext:export <node> <language>` and `./flow supertext:import <file>` do the same. The package sends version information (no content, no key) to Supertext unless you turn it off; see the installation guide.
 
 ## Demo
 

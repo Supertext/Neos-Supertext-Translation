@@ -1,0 +1,94 @@
+{namespace neos=Neos\Neos\ViewHelpers}
+<style>
+	.supertext-files fieldset > p { margin-bottom: 16px; }
+	.supertext-files .neos-control-group { margin-bottom: 16px; }
+	.supertext-files .neos-control-label { display: block; margin-bottom: 6px; }
+	.supertext-files .supertext-option { margin: 8px 0; }
+	.supertext-files-result { margin-bottom: 24px; max-width: 760px; }
+	.supertext-files-result h2 { font-size: 18px; margin-bottom: 12px; }
+	.supertext-job { padding: 10px 14px; margin-bottom: 10px; background: #323232; border-left: 4px solid #00a338; }
+	.supertext-job-error { border-left-color: #ff460d; }
+	.supertext-job ul { margin: 6px 0 0 18px; list-style: disc; }
+</style>
+<div class="neos-row-fluid supertext-files">
+	<f:flashMessages class="supertext-files-messages" />
+
+	<fieldset class="neos-span6 supertext-files-export">
+		<legend>{neos:backend.translate(id: 'export.title', source: 'Main', package: 'Supertext.NeosTranslation')}</legend>
+		<p>{neos:backend.translate(id: 'export.hint', source: 'Main', package: 'Supertext.NeosTranslation')}</p>
+		<f:if condition="{documents}">
+			<f:then>
+				<f:if condition="{languages.targets}">
+					<f:then>
+						<f:form action="export" format="download" method="post" id="supertext-export">
+							<div class="neos-control-group">
+								<label class="neos-control-label" for="supertext-node">{neos:backend.translate(id: 'export.page', source: 'Main', package: 'Supertext.NeosTranslation')}</label>
+								<div class="neos-controls">
+									<div class="neos-select">
+										<f:form.select name="node" id="supertext-node" options="{documents}" optionValueField="id" optionLabelField="indentedLabel" value="{selectedNode}" class="neos-span12" />
+									</div>
+									<p class="neos-help-block">{neos:backend.translate(id: 'export.source', arguments: {0: languages.source.label}, source: 'Main', package: 'Supertext.NeosTranslation')}</p>
+								</div>
+							</div>
+							<div class="neos-control-group">
+								<span class="neos-control-label">{neos:backend.translate(id: 'export.languages', source: 'Main', package: 'Supertext.NeosTranslation')}</span>
+								<div class="neos-controls">
+									<f:for each="{languages.targets}" as="language" iteration="i">
+										<div class="supertext-option">
+											<label class="neos-checkbox" for="supertext-language-{i.index}">
+												<f:form.checkbox name="languages" multiple="true" value="{language.value}" id="supertext-language-{i.index}" /><span></span>
+												{language.label} <small>({language.value})</small>
+											</label>
+										</div>
+									</f:for>
+								</div>
+							</div>
+							<div class="neos-control-group">
+								<span class="neos-control-label">{neos:backend.translate(id: 'export.format', source: 'Main', package: 'Supertext.NeosTranslation')}</span>
+								<div class="neos-controls">
+									<f:for each="{formats}" key="value" as="label">
+										<div class="supertext-option">
+											<label class="neos-radio" for="supertext-format-{value}">
+												<f:form.radio name="format" value="{value}" id="supertext-format-{value}" checked="{value} == {selectedFormat}" /><span></span>
+												{label}
+											</label>
+										</div>
+									</f:for>
+								</div>
+							</div>
+							<f:form.submit value="{neos:backend.translate(id: 'export.download', source: 'Main', package: 'Supertext.NeosTranslation')}" class="neos-button neos-button-primary" />
+						</f:form>
+					</f:then>
+					<f:else>
+						<p>{neos:backend.translate(id: 'export.noTargets', source: 'Main', package: 'Supertext.NeosTranslation')}</p>
+					</f:else>
+				</f:if>
+			</f:then>
+			<f:else>
+				<p>{neos:backend.translate(id: 'export.noPages', source: 'Main', package: 'Supertext.NeosTranslation')}</p>
+			</f:else>
+		</f:if>
+	</fieldset>
+
+	<fieldset class="neos-span6 supertext-files-import">
+		<legend>{neos:backend.translate(id: 'import.title', source: 'Main', package: 'Supertext.NeosTranslation')}</legend>
+		<p>{neos:backend.translate(id: 'import.hint', source: 'Main', package: 'Supertext.NeosTranslation')}</p>
+		<f:form action="import" method="post" enctype="multipart/form-data" id="supertext-import">
+			<div class="neos-control-group">
+				<label class="neos-control-label" for="supertext-file">{neos:backend.translate(id: 'import.file', source: 'Main', package: 'Supertext.NeosTranslation')}</label>
+				<div class="neos-controls">
+					<f:form.upload name="file" id="supertext-file" additionalAttributes="{accept: '.xlf,.xliff,.html,.htm'}" />
+				</div>
+			</div>
+			<div class="neos-control-group">
+				<div class="neos-controls">
+					<label class="neos-checkbox" for="supertext-include-changed">
+						<f:form.checkbox name="includeChanged" value="1" id="supertext-include-changed" checked="{includeChanged}" /><span></span>
+						{neos:backend.translate(id: 'import.includeChanged', source: 'Main', package: 'Supertext.NeosTranslation')}
+					</label>
+				</div>
+			</div>
+			<f:form.submit value="{neos:backend.translate(id: 'import.title', source: 'Main', package: 'Supertext.NeosTranslation')}" class="neos-button neos-button-primary" />
+		</f:form>
+	</fieldset>
+</div>

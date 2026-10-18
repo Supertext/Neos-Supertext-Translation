@@ -66,25 +66,31 @@ Reasons your administrator may see, and what they mean for you:
 | *Supertext offers no formal or informal tone for this language …* | A formal or informal tone is set for a language that has none (e.g. English). Your administrator sets it back to the default tone. |
 | *Supertext rejected the API key* / *No Supertext API key is set* | The connection to Supertext isn't set up correctly. Your administrator fixes the key. |
 
-The package has no screens of its own: everything you see while translating is Neos' own interface, in the interface language set in your user settings.
+Translating with *Create and copy* happens in Neos' own interface. The package's one screen of its own, **Management → Supertext** (export and import of translation files, below), follows the interface language set in your user settings (English, German, French or Italian).
 
 ## Translation files: export and import (XLIFF or HTML)
 
-Besides translating with Supertext right away, a page can be translated outside Neos: in a translation tool (Trados, memoQ, Phrase …), by a translator, or in Supertext's web app. The package has no screen for this, so your administrator (or anyone with access to the server) runs two commands; you then review the result in Neos as usual.
+Besides translating with Supertext right away, a page can be translated outside Neos: in a translation tool (Trados, memoQ, Phrase …), by a translator, or in Supertext's web app. Open **Management → Supertext** in the Neos menu.
 
-1. **Export:** `./flow supertext:export <page node id> fr` writes the page's texts (the page, its content elements, exactly what *Create and copy* would translate) to a file, e.g. `neos-<node id>-fr.xlf`.
-   - **XLIFF 1.2** (default, `--format=xliff`): the better choice for translation tools and translators. Formatting (bold, links) is shown as protected tags. Several languages fit in one file: `./flow supertext:export <node id> fr it`.
-   - **HTML** (`--format=html`, one language per file): for Supertext's web app or anyone who translates HTML files. Whoever translates it must leave its `<head>` and the `data-st-id` attributes alone: they tell the package which page and which texts they are. An HTML file can't mark a text as untranslated, so an HTML file imported unchanged writes the original (source) text into the translation.
+![Management → Supertext: Export for translation on the left, Import translation on the right](images/module-overview.png)
+
+1. **Export for translation:** choose the **Page** (it is exported with its content elements, exactly what *Create and copy* would translate), tick the **Languages** to translate into and choose the **File format**, then click **Download file**. The texts are taken from your workspace in the site's default language (shown under the page), so unpublished changes of yours are included.
+   - **XLIFF 1.2 (for translation tools)**: the better choice for translation tools and translators. Formatting (bold, links) is shown as protected tags. Several languages fit in one file.
+   - **HTML (one language per file)**: for Supertext's web app or anyone who translates HTML files. Whoever translates it must leave its `<head>` and the `data-st-id` attributes alone: they tell the package which page and which texts they are. An HTML file can't mark a text as untranslated, so an HTML file imported unchanged writes the original (source) text into the translation.
+
+   ![Export for translation: the page "Text & images", Italiano ticked, HTML chosen, and the Download file button](images/module-export.png)
 2. Send the file to the translator, or upload it to Supertext's web app, and get the translated file back.
-3. **Import:** `./flow supertext:import <file> --workspace=user-<yourname>` writes the translations into the language version of the page. If the page doesn't exist in that language yet, it is created first (like *Create and copy*). Texts whose original was edited after the export are skipped; add `--include-changed` to import them anyway.
-4. Review and publish as described above (in your workspace, if the import used it).
+3. **Import translation:** choose the translated file (XLIFF or HTML, at most 10 MB; any page, it doesn't have to be the one selected on the left) and click **Import translation**. The translations are written into the language version of the page **in your workspace**. If the page doesn't exist in that language yet, it is created first (like *Create and copy*). Texts whose original was edited after the export are skipped; tick **Also import texts whose source changed since the export** to import them anyway.
+4. Review and publish as described above: the imported page shows up as a change in your workspace.
 
-The import prints a summary per language:
+The import shows a summary per page and language:
+
+![Result of the import: English (US) → Italiano: Text & images, Imported: 7](images/module-import-result.png)
 
 | Line | Meaning |
 | --- | --- |
 | *Imported: N* | Texts written into the translation. |
-| *Skipped, source changed since the export: N* | The original text was edited after the export. Import again with `--include-changed`, or export again. |
+| *Skipped, source changed since the export: N* | The original text was edited after the export. Import again with *Also import texts whose source changed since the export* ticked, or export again. |
 | *Not translated in the file: N* | The file has no translation for these texts. |
 | *Formatting changed, not imported: N* | The translation broke or added formatting (tags) the original doesn't have. Fix it in the file and import again. |
 | *Not in the file: N* | Texts added to the page since the export. Export again to translate them. |
@@ -95,9 +101,13 @@ The import prints a summary per language:
 | *This file wasn't exported by the Supertext package, or its header was removed.* | The file has no Supertext information (e.g. an HTML file whose `<head>` was removed). |
 | *The file is too large (at most 10 MB).* | Split the work into smaller files. |
 | *This file belongs to another system (…).* | The file was exported by a Supertext plugin for another CMS. |
-| *The node this file was exported from no longer exists.* | The original page or element was deleted. |
+| *The page this file was exported from no longer exists.* | The original page or element was deleted. |
 | *The site has no language ….* | The language was removed from the site's language dimension. |
 | *Nothing to translate.* (export) | The page has no text to translate. |
+| *Choose at least one language (exactly one for HTML).* (export) | Tick a language; for HTML, tick exactly one. |
+| *Choose a file to import.* | Click **Import translation** after choosing a file. |
+
+Administrators can do the same on the command line (`./flow supertext:export`, `./flow supertext:import`, see the installation guide); the messages there are in English.
 
 ## Tips
 

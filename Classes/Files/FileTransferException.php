@@ -8,7 +8,9 @@ namespace Supertext\NeosTranslation\Files;
  * An export or import of a translation file that can't go ahead. `$reason` is one of
  * nothing_to_translate, invalid_request, invalid_file, missing_metadata, too_large,
  * other_system (args: the file's plugin), not_found, no_language (args: the dimension value);
- * the message is the English text the CLI prints.
+ * the message is the English text the CLI prints. The back-end module shows `error.<reason>`
+ * from Resources/Private/Translations/<language>/Main.xlf instead (Tests/InterfaceStringsTest.php
+ * checks that every reason has one).
  */
 final class FileTransferException extends \RuntimeException
 {

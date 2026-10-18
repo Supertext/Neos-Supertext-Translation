@@ -37,7 +37,8 @@ Neos UI "Create and copy"  ──►  N × CreateNodeVariant   (one per page/con
 | `Service\TranslationWriter` | Writes translations with `SetNodeProperties` (only properties the collector offered; a document's translated title also rebuilds `uriPathSegment`). Shared by API translations and file imports. |
 | `Service\NodeVariants` | Creates missing language variants like *Create and copy* (`adopt()`: the node, missing parents, optionally the content) and finds dimension space points; used by `supertext:translate` and `supertext:import`. |
 | `Files\FileTransfer`, `Files\FileTransferException` | Plain-PHP glue to the SDK's `Files\TranslationFiles` for `supertext:export`/`supertext:import` (see *Translation files*). Unit-tested without Neos. |
-| `Service\TranslationFileService` | Flow side of the translation files: languages, node, segments (`SegmentCollector`), missing variants (`NodeVariants`) and the write-back (`TranslationWriter`). |
+| `Service\TranslationFileService` | Flow side of the translation files: languages, node, segments (`SegmentCollector`), missing variants (`NodeVariants`) and the write-back (`TranslationWriter`); for the module also `languages()` (source and target dimension values with labels), `documents()` (the site's pages in tree order) and `label()`. |
+| `Controller\TranslationFilesController` | Back-end module **Management → Supertext** (`Configuration/Settings.yaml` → `Neos.Neos.modules.management.submodules.supertext`, access in `Configuration/Policy.yaml`, templates in `Resources/Private/Templates/TranslationFiles/` and `Partials/TranslationFiles/`). Same service calls as the CLI, but in the user's personal workspace and, for the import, with the user's permissions (see *Translation files*). |
 | `Configuration\Settings` | Typed settings; `SUPERTEXT_API_KEY` / `SUPERTEXT_API_ENDPOINT` win. |
 | `Configuration\PackageVersion` | Installed package version via `Composer\InstalledVersions::getPrettyVersion('supertext/neos-translation')`, `unknown` if Composer can't tell. No hardcoded copy. |
 
@@ -72,9 +73,9 @@ Every Supertext plugin reports to the Supertext Commando Center (Commando-Center
 - Update it with `scripts/vendor-plugin-health.sh [commit-or-branch]`, e.g. `scripts/vendor-plugin-health.sh plugin-health-v0.1.0` (default `main`; `PLUGIN_HEALTH_DIR=<clone>` uses a local clone of Commando-Center-Supertext-Translation), run the tests, and commit with a CHANGELOG entry.
 - Never edit the copy: fix it in Commando-Center-Supertext-Translation → `plugin-health/`, then re-run the script.
 
-## Translation files (supertext:export, supertext:import)
+## Translation files (Management → Supertext, supertext:export, supertext:import)
 
-SDK 0.5.0 adds `Files\TranslationFiles` (XLIFF 1.2 and HTML, outside `V1`, no API call; bundled like the rest of the SDK, `scripts/vendor-sdk.sh` rewrites its namespace too). The package has no UI, so they are CLI commands next to `supertext:translate`:
+SDK 0.5.0 adds `Files\TranslationFiles` (XLIFF 1.2 and HTML, outside `V1`, no API call; bundled like the rest of the SDK, `scripts/vendor-sdk.sh` rewrites its namespace too). Editors use the back-end module (below); administrators and scripts the CLI commands next to `supertext:translate`:
 
 ```bash
 ./flow supertext:export <node> <language> [<language> …] [--format=xliff|html] [--output=<file>|-] [--source=<value>] [--workspace=live] [--content-repository=default]
@@ -85,7 +86,12 @@ SDK 0.5.0 adds `Files\TranslationFiles` (XLIFF 1.2 and HTML, outside `V1`, no AP
 - **Job metadata:** `plugin` = `Neos-Supertext-Translation`; `reference` = `node:<node aggregate id>:<source dimension value>:<target dimension value>` (`FileTransfer::reference()` / `parseReference()`), e.g. `node:3c9a4f6d-…:en_US:fr`; other dimensions use their default (root) values, as in `supertext:translate`. `sourceLanguage`/`targetLanguage` are the codes `Languages::source()`/`target()` give with the `languages.*.code` mapping, else the dimension value itself (`_` → `-`), so an unmapped language never blocks an export.
 - **Files:** XLIFF holds one `<file>` per target language; HTML exactly one language. Default name `neos-<node id>-<language>.xlf` (`neos-<node id>.xlf` for several languages, `.html`); `--output=-` writes to standard output.
 - **Import:** files over 10 MB are refused before reading (`FileTransfer::MAX_FILE_BYTES`); `TranslationFiles::read()`; per job: `plugin` must be ours (*other system*), the reference must parse and the node must exist in the source language (*not found*), both dimension values must exist (*no language*). The segments are collected again and passed to `importTranslations()`; `ok` (and `source_changed` with `--include-changed`) are written, `untranslated`, `invalid_markup` and `missing` never. Missing variants are created first with `NodeVariants::adopt()` (like *Create and copy*; the hook's queued API translations are dropped, the file provides the texts), then `TranslationWriter` writes into the given workspace without authorization checks (CLI). Per job the command prints the counts (`FileTransfer::summary()`); it exits with 1 if a job failed.
-- Tests: `php Tests/FileTransferTest.php` (reference round trip, export keys and mapping, import rules, glue errors, size limit; no Neos needed).
+- **Back-end module** `Controller\TranslationFilesController` (Management → Supertext, `AbstractModuleController`, *Lite* stylesheet): `indexAction` (both forms), `exportAction` and `importAction`, all through `TranslationFileService`, so files and rules are the CLI's.
+  - **Workspace:** the logged-in user's personal workspace (`WorkspaceService::getPersonalWorkspaceForUser()`, created with `createPersonalWorkspaceForUserIfMissing()` if needed) for both export and import; content repository and site from `SiteDetectionResult` of the request. The source is the default dimension space point's language, as the CLI without `--source`; the page list is the site node and its documents in tree order (`documents()`).
+  - **Export** posts with `format="download"`: Neos's `ModuleController` returns non-HTML module responses as they are instead of wrapping them in the back-end layout, so the action sets `Content-Type`, `Content-Disposition: attachment` (file name from `FileTransfer::fileName()`, only `[A-Za-z0-9_-]`), `nosniff` and `no-store` and returns the file. Errors redirect to `index` (format `html`) with a flash message.
+  - **Import** reads the upload from the PSR-7 request (`moduleArguments[file]`) instead of Flow's property mapping, so no `PersistentResource` is created and nothing is stored; it refuses `UPLOAD_ERR_INI_SIZE`/`FORM_SIZE` and files over `FileTransfer::MAX_FILE_BYTES` before reading the stream. The write runs with the user's permissions (`TranslationFileService::import(…, checkPermissions: true)`; the CLI passes `false` and runs without authorization checks). The result (`Import.html`) shows per job the page label, the language labels and the counts of `FileTransfer::import()`.
+  - **Security:** `Policy.yaml` has a `ModulePrivilege` (`management/supertext`) and a `MethodPrivilege` for the three actions, both granted to `Neos.Neos:Editor`. Forms are `f:form` with `method="post"`, so Flow's CSRF token is required.
+- Tests: `php Tests/FileTransferTest.php` (reference round trip, export keys and mapping, import rules, glue errors, size limit; no Neos needed). The module is checked in a local Neos (see *Local development*) and by `Tests/Docs/screenshots.mjs` (export, then import of the file with the Italian samples).
 
 ## Supertext API protocol
 
@@ -151,11 +157,12 @@ With PHP's built-in server, use a router that serves existing files and sets `SC
 php Tests/PackageVersionTest.php # version helper (Composer InstalledVersions), no Neos needed
 php Tests/ReportingTest.php      # version reports, key check, ping, state storage, SDK 0.2 state (bundled SDK + Plugin Health, fake transport and storage), no Neos needed
 php Tests/FileTransferTest.php   # translation files: export/import glue around the SDK's TranslationFiles, no Neos needed
+php Tests/InterfaceStringsTest.php # module strings: en/de/fr/it Main.xlf have the same ids, targets and placeholders; every id used exists
 php Tests/SdkTest.php            # Guzzle transport + bundled SDK round trip (mocked HTTP), language mapping/unmapped errors, error codes;
                                  # needs Guzzle from vendor/ or demo/Packages/Libraries (composer install --working-dir=demo)
 ```
 
-CI (`.github/workflows/ci.yml`) lints all PHP files on 8.2, 8.3 and 8.4, runs the version, reporting and translation file tests and syntax-checks the demo entrypoint on every push and pull request; the *PHPStan* job installs the demo's locked Neos, runs `Tests/SdkTest.php` and PHPStan (see *Code quality and security checks*).
+CI (`.github/workflows/ci.yml`) lints all PHP files on 8.2, 8.3 and 8.4, runs the version, reporting, translation file and interface strings tests and syntax-checks the demo entrypoint on every push and pull request; the *PHPStan* job installs the demo's locked Neos, runs `Tests/SdkTest.php` and PHPStan (see *Code quality and security checks*).
 
 End to end (manual, before a release): fresh demo, stand-in with `STAND_IN_PREFIX=1`, then (a) `supertext:translate` into French and (b) *Create and copy* into Italian in the UI as the editor; every visible text must be translated, the workspace must show the changes, and publishing must work. `Tests/Docs/screenshots.mjs` runs (b) automatically.
 
@@ -171,6 +178,8 @@ export SUPERTEXT_REPORT_URL=http://127.0.0.1:8765/report  # version reports go t
 # start the demo (fresh database), then:
 BASE_URL=http://127.0.0.1:8097 DEMO_EDITOR_EMAIL=… DEMO_EDITOR_PASSWORD=… DEMO_ADMIN_EMAIL=… DEMO_ADMIN_PASSWORD=… npm run screenshots
 ```
+
+At the end the editor opens Management → Supertext (`module-overview`, `module-export`), exports "Text & images" as HTML for Italian, fills it from `sample-it.json` and imports it (`module-import-result`). `ONLY=files npm run screenshots` takes just these three and works on any state of the demo.
 
 When the flow touches new texts, run the stand-in with `STAND_IN_DUMP=<dir>`: it writes the texts it has no sample for to `<dir>/it-CH.json`. Translate them into `sample-it.json` and regenerate. Use `CHROMIUM_PATH` to point Playwright at an installed Chromium.
 
@@ -253,7 +262,7 @@ Releases are published by `.github/workflows/release.yml` when the version is of
 
 ## Interface strings
 
-The package has no UI of its own today (it hooks into the content repository; editors only see Neos' own dialogs), so it ships no translation files. CLI output, the `X-Supertext-Error` header and log lines are English for administrators. If an editor- or admin-facing UI is added (a Neos UI notification, a backend module, a flash message), its strings go into Flow XLIFF files `Resources/Private/Translations/{en,de,fr,it}/Main.xlf` (source `en`), used with Flow's `Translator` / `I18n.translate()` / the Neos UI's `i18n` registry, and every new string needs all four languages in the same commit (formal Sie/vous/Lei, Neos' own terms, "Supertext", placeholders and URLs unchanged).
+Translating hooks into the content repository, so editors see Neos' own dialogs there. The package's own UI is the back-end module Management → Supertext: its strings (module label and description, forms, import summary, and the module's versions of the `FileTransferException` messages as `error.<reason>`) are in Flow XLIFF files `Resources/Private/Translations/{en,de,fr,it}/Main.xlf` (source `en`, placeholders `{0}`), used with `neos:backend.translate` in the templates and Flow's `Translator` in the controller; `AbstractModuleController` sets the locale to the user's interface language. Every new string needs all four languages in the same commit (formal Sie/vous/Lei, Neos' own terms such as *Arbeitsbereich*/*espace de travail*/*area di lavoro*, "Supertext", placeholders and URLs unchanged); `Tests/InterfaceStringsTest.php` checks it. CLI output, the `X-Supertext-Error` header and log lines stay English for administrators (`Service\ErrorMessages`, `FileTransferException::MESSAGES`).
 
 ## Known limitations / roadmap
 
@@ -262,6 +271,7 @@ The package has no UI of its own today (it hooks into the content repository; ed
 - No "retranslate" action for existing translations, and no sync of later changes in the source language.
 - Content added to the source page after translating isn't carried over automatically.
 - Only `string` properties are translated; value objects (e.g. structured link or list editors) are not.
+- Management → Supertext exports one page (with its content) per file and only from the site's default language; subpages, several pages at once and another source language are CLI-only for now (`supertext:export` per node, `--source`).
 - Human (professional) translation orders are not supported yet (the WordPress plugin has them).
 - Tested on Neos 9.1 with the stand-in API; not yet against the live API.
 - Version reports run inside the back-end request (no after-response hook in Flow middlewares); a job queue would move them out.

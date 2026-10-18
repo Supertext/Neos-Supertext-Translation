@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+	<file original="" product-name="Supertext.NeosTranslation" source-language="en" target-language="it" datatype="plaintext">
+		<body>
+			<trans-unit id="module.label" xml:space="preserve">
+				<source>Supertext</source>
+				<target state="final">Supertext</target>
+			</trans-unit>
+			<trans-unit id="module.description" xml:space="preserve">
+				<source>Export pages for translation as XLIFF or HTML files and import the translated files.</source>
+				<target state="final">Esporti pagine per la traduzione come file XLIFF o HTML e importi i file tradotti.</target>
+			</trans-unit>
+			<trans-unit id="export.title" xml:space="preserve">
+				<source>Export for translation</source>
+				<target state="final">Esporta per la traduzione</target>
+			</trans-unit>
+			<trans-unit id="export.hint" xml:space="preserve">
+				<source>Download the page's texts as a file for a translation tool, a translator or Supertext's web app. Import the translated file again under Import translation.</source>
+				<target state="final">Scarichi i testi della pagina in un file per uno strumento di traduzione, un traduttore o l’app web di Supertext. Importi poi il file tradotto in Importa traduzione.</target>
+			</trans-unit>
+			<trans-unit id="export.page" xml:space="preserve">
+				<source>Page (with its content)</source>
+				<target state="final">Pagina (con i suoi contenuti)</target>
+			</trans-unit>
+			<trans-unit id="export.source" xml:space="preserve">
+				<source>Source language: {0}. The texts are taken from your workspace.</source>
+				<target state="final">Lingua di partenza: {0}. I testi provengono dalla Sua area di lavoro.</target>
+			</trans-unit>
+			<trans-unit id="export.languages" xml:space="preserve">
+				<source>Languages</source>
+				<target state="final">Lingue</target>
+			</trans-unit>
+			<trans-unit id="export.format" xml:space="preserve">
+				<source>File format</source>
+				<target state="final">Formato del file</target>
+			</trans-unit>
+			<trans-unit id="export.format.xliff" xml:space="preserve">
+				<source>XLIFF 1.2 (for translation tools)</source>
+				<target state="final">XLIFF 1.2 (per strumenti di traduzione)</target>
+			</trans-unit>
+			<trans-unit id="export.format.html" xml:space="preserve">
+				<source>HTML (one language per file)</source>
+				<target state="final">HTML (una lingua per file)</target>
+			</trans-unit>
+			<trans-unit id="export.download" xml:space="preserve">
+				<source>Download file</source>
+				<target state="final">Scarica il file</target>
+			</trans-unit>
+			<trans-unit id="export.noPages" xml:space="preserve">
+				<source>There are no pages to export.</source>
+				<target state="final">Non ci sono pagine da esportare.</target>
+			</trans-unit>
+			<trans-unit id="export.noTargets" xml:space="preserve">
+				<source>The site has no other language to translate into.</source>
+				<target state="final">Il sito non ha altre lingue in cui tradurre.</target>
+			</trans-unit>
+			<trans-unit id="import.title" xml:space="preserve">
+				<source>Import translation</source>
+				<target state="final">Importa traduzione</target>
+			</trans-unit>
+			<trans-unit id="import.hint" xml:space="preserve">
+				<source>Upload a file exported with Export for translation (any page, at most 10 MB). The translations are saved in your workspace, like translations made with Supertext: review and publish them as usual.</source>
+				<target state="final">Carichi un file esportato con Esporta per la traduzione (qualsiasi pagina, al massimo 10 MB). Le traduzioni vengono salvate nella Sua area di lavoro, come le traduzioni fatte con Supertext: le verifichi e le pubblichi come di consueto.</target>
+			</trans-unit>
+			<trans-unit id="import.file" xml:space="preserve">
+				<source>Translated file (XLIFF or HTML)</source>
+				<target state="final">File tradotto (XLIFF o HTML)</target>
+			</trans-unit>
+			<trans-unit id="import.includeChanged" xml:space="preserve">
+				<source>Also import texts whose source changed since the export</source>
+				<target state="final">Importa anche i testi il cui testo di partenza è cambiato dopo l’esportazione</target>
+			</trans-unit>
+			<trans-unit id="import.noFile" xml:space="preserve">
+				<source>Choose a file to import.</source>
+				<target state="final">Scelga un file da importare.</target>
+			</trans-unit>
+			<trans-unit id="import.result" xml:space="preserve">
+				<source>Result of the import</source>
+				<target state="final">Risultato dell’importazione</target>
+			</trans-unit>
+			<trans-unit id="import.job" xml:space="preserve">
+				<source>{0} → {1}: {2}</source>
+				<target state="final">{0} → {1}: {2}</target>
+			</trans-unit>
+			<trans-unit id="import.publish" xml:space="preserve">
+				<source>Review the translations in your workspace and publish them.</source>
+				<target state="final">Verifichi le traduzioni nella Sua area di lavoro e le pubblichi.</target>
+			</trans-unit>
+			<trans-unit id="summary.ok" xml:space="preserve">
+				<source>Imported: {0}</source>
+				<target state="final">Importati: {0}</target>
+			</trans-unit>
+			<trans-unit id="summary.changed" xml:space="preserve">
+				<source>Skipped, source changed since the export: {0}</source>
+				<target state="final">Saltati, testo di partenza cambiato dopo l’esportazione: {0}</target>
+			</trans-unit>
+			<trans-unit id="summary.untranslated" xml:space="preserve">
+				<source>Not translated in the file: {0}</source>
+				<target state="final">Non tradotti nel file: {0}</target>
+			</trans-unit>
+			<trans-unit id="summary.invalid" xml:space="preserve">
+				<source>Formatting changed, not imported: {0}</source>
+				<target state="final">Formattazione modificata, non importati: {0}</target>
+			</trans-unit>
+			<trans-unit id="summary.missing" xml:space="preserve">
+				<source>Not in the file: {0}</source>
+				<target state="final">Non presenti nel file: {0}</target>
+			</trans-unit>
+			<trans-unit id="error.nothing_to_translate" xml:space="preserve">
+				<source>Nothing to translate.</source>
+				<target state="final">Niente da tradurre.</target>
+			</trans-unit>
+			<trans-unit id="error.invalid_request" xml:space="preserve">
+				<source>Choose at least one language (exactly one for HTML).</source>
+				<target state="final">Scelga almeno una lingua (esattamente una per HTML).</target>
+			</trans-unit>
+			<trans-unit id="error.invalid_file" xml:space="preserve">
+				<source>This file isn't a valid XLIFF or HTML translation file.</source>
+				<target state="final">Questo file non è un file di traduzione XLIFF o HTML valido.</target>
+			</trans-unit>
+			<trans-unit id="error.missing_metadata" xml:space="preserve">
+				<source>This file wasn't exported by the Supertext package, or its header was removed.</source>
+				<target state="final">Questo file non è stato esportato dal pacchetto Supertext, oppure la sua intestazione è stata rimossa.</target>
+			</trans-unit>
+			<trans-unit id="error.too_large" xml:space="preserve">
+				<source>The file is too large (at most 10 MB).</source>
+				<target state="final">Il file è troppo grande (al massimo 10 MB).</target>
+			</trans-unit>
+			<trans-unit id="error.other_system" xml:space="preserve">
+				<source>This file belongs to another system ({0}).</source>
+				<target state="final">Questo file appartiene a un altro sistema ({0}).</target>
+			</trans-unit>
+			<trans-unit id="error.not_found" xml:space="preserve">
+				<source>The page this file was exported from no longer exists.</source>
+				<target state="final">La pagina da cui è stato esportato questo file non esiste più.</target>
+			</trans-unit>
+			<trans-unit id="error.no_language" xml:space="preserve">
+				<source>The site has no language {0}.</source>
+				<target state="final">Il sito non ha la lingua {0}.</target>
+			</trans-unit>
+		</body>
+	</file>
+</xliff>

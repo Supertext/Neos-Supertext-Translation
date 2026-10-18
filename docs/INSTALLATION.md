@@ -138,7 +138,7 @@ and for this package:
 
 ### Interface languages
 
-The package adds no screens, dialogs or back-end messages of its own: editors only use Neos' own *Create and copy* dialog, which follows each user's Neos interface language (user menu → *User Settings* → *Interface Language*), English, German, French and Italian included. The only text the package writes is for administrators: the output of the `supertext:*` CLI commands, the `X-Supertext-Error` response header and log lines, all in English.
+For translating, editors use Neos' own *Create and copy* dialog, which follows each user's Neos interface language (user menu → *User Settings* → *Interface Language*), English, German, French and Italian included. The package's one screen, **Management → Supertext** (export and import of translation files), comes in the same four languages and follows the same setting (`Resources/Private/Translations/{en,de,fr,it}/Main.xlf`). Text for administrators only, the output of the `supertext:*` CLI commands, the `X-Supertext-Error` response header and log lines, is in English.
 
 
 ## 4. Check it works
@@ -151,7 +151,12 @@ Open a page in the backend, switch the language menu to a language the page does
 
 ### Translation files (export and import)
 
-`./flow supertext:export` and `./flow supertext:import` (see the [user guide](USER_GUIDE.md#translation-files-export-and-import-xliff-or-html)) need nothing to configure and no API key: they never call the Supertext API. Like `supertext:translate` they run on the server's command line without Neos authorization checks, so whoever may run `./flow` may export and import. Files larger than 10 MB are refused before they are read; nothing is stored besides the translated content. The import writes to the workspace given with `--workspace` (default `live`, which publishes immediately; use a user workspace such as `user-<name>` to review first).
+Export for translation and import of translated files (XLIFF 1.2 or HTML, see the [user guide](USER_GUIDE.md#translation-files-export-and-import-xliff-or-html)) need nothing to configure and no API key: they never call the Supertext API.
+
+![Management → Supertext with Export for translation and Import translation](images/module-overview.png)
+
+- **Back-end module Management → Supertext:** for editors. Access is the privilege target `Supertext.NeosTranslation:Module.TranslationFiles` (module) with `Supertext.NeosTranslation:Module.TranslationFiles.Actions` (its actions), granted to `Neos.Neos:Editor` and so to administrators. To give it to another role (e.g. `Neos.Neos:RestrictedEditor`) or take it away, grant or deny both in your own `Policy.yaml`; to hide the module everywhere, set `Neos.Neos.modules.management.submodules.supertext.enabled: false`. The module **works in the user's personal workspace**: export reads the texts from it (live plus the user's unpublished changes) and import writes into it, so imported translations are reviewed and published in the Neos UI like any other change (a personal workspace that doesn't exist yet is created, as at login). Uploads are read in memory and never stored; files larger than 10 MB are refused before they are read (PHP's `upload_max_filesize` and `post_max_size` must allow 10 MB for that message to appear; the demo uses 32 MB). Forms are protected by Flow's CSRF token.
+- **CLI** `./flow supertext:export` and `./flow supertext:import`: for administrators and scripts. Like `supertext:translate` they run on the server's command line without Neos authorization checks, so whoever may run `./flow` may export and import. The import writes to the workspace given with `--workspace` (default `live`, which publishes immediately; use a user workspace such as `user-<name>` to review first).
 
 ## 5. Version information and the API key check
 
@@ -187,6 +192,12 @@ All under `Supertext.NeosTranslation`:
 | `editors.plainText` | TextField, TextArea editors | Inspector editors whose string properties are translated as plain text |
 | `editors.richText` | RichTextEditor | Inspector editors whose properties are translated as HTML |
 | `excludedProperties` | `[uriPathSegment]` | Never translated (the URL segment is rebuilt from the translated title) |
+
+Outside `Supertext.NeosTranslation`:
+
+| Setting | Default | |
+| --- | --- | --- |
+| `Neos.Neos.modules.management.submodules.supertext.enabled` | `true` | `false` hides the back-end module **Management → Supertext** (export and import of translation files) for everyone; who sees it otherwise is set in `Policy.yaml` (see *Translation files* above) |
 
 **Per property** (in a NodeTypes YAML file) you can force a property in or out:
 
@@ -238,10 +249,12 @@ Translations already made stay in place; they are ordinary Neos content.
 | `Could not reach Supertext` | The server can't make outbound HTTPS calls to the endpoint; check firewall and proxy (Guzzle honours `HTTPS_PROXY`). |
 | `Timed out waiting for the Supertext translation` | Very long pages; raise `pollTimeout` (and PHP's `max_execution_time` / proxy timeouts accordingly). |
 | "Root Node Aggregates cannot be varied" when creating a page in a new language | The language was added after the content was imported. Extend the root node to it (see *Languages*). |
-| `supertext:import`: *The file is too large (at most 10 MB)* | Split the work into smaller files (one page or language per file). |
+| `supertext:import` or Management → Supertext: *The file is too large (at most 10 MB)* | Split the work into smaller files (one page or language per file). |
+| Management → Supertext is missing from the menu | The user's roles don't include `Neos.Neos:Editor` (or a role you granted the module to), or the module is disabled (`enabled: false`). |
+| Import in the module ends with an empty page or "Choose a file to import." for a file under 10 MB | PHP refused the upload: raise `upload_max_filesize` and `post_max_size` above 10 MB. |
 | `supertext:import`: *This file belongs to another system* / *wasn't exported by the Supertext package* | The file comes from another CMS's Supertext plugin, or its header (HTML `<head>`, XLIFF `<file>` attributes) was removed. Export again and keep the header. |
 | A field isn't translated | Check its property type and editor (see *All settings*), or force it with `options.supertext.translate: true`. |
 
 ## Security note
 
-The API key is only read from the environment or the settings and is sent only to the configured endpoint; the version information never contains it (only whether one is set and its check result), and only a SHA-256 fingerprint of it is stored locally. Translation runs with the permissions of the editor who created the page in the new language; the CLI commands (`supertext:translate`, `supertext:import`) run without authorization checks, like other Neos CLI commands. Imported files are treated as untrusted (size limit, no DTDs, markup only from the current source, see the developer guide).
+The API key is only read from the environment or the settings and is sent only to the configured endpoint; the version information never contains it (only whether one is set and its check result), and only a SHA-256 fingerprint of it is stored locally. Translation runs with the permissions of the editor who created the page in the new language; the CLI commands (`supertext:translate`, `supertext:import`) run without authorization checks, like other Neos CLI commands. The back-end module Management → Supertext is limited by `Policy.yaml` (editors and administrators), works only in the user's personal workspace and writes imports with that user's permissions; its forms carry Flow's CSRF token, and uploads are read in memory, never stored. Imported files are treated as untrusted (size limit, no DTDs, markup only from the current source, see the developer guide).

@@ -1,0 +1,30 @@
+{namespace neos=Neos\Neos\ViewHelpers}
+<div class="neos-content neos-container-fluid">
+	<div class="neos-row-fluid supertext-files-result">
+		<f:if condition="{importError}">
+			<f:then>
+				<div class="supertext-job supertext-job-error" role="alert">{importError}</div>
+			</f:then>
+			<f:else>
+				<h2>{neos:backend.translate(id: 'import.result', source: 'Main', package: 'Supertext.NeosTranslation')}</h2>
+				<f:for each="{results}" as="result">
+					<div class="supertext-job {f:if(condition: result.error, then: 'supertext-job-error')}" role="status">
+						<strong>{result.heading}</strong>
+						<f:if condition="{result.error}">
+							<f:then><br />{result.error}</f:then>
+							<f:else>
+								<ul>
+									<f:for each="{result.lines}" as="line"><li>{line}</li></f:for>
+								</ul>
+							</f:else>
+						</f:if>
+					</div>
+				</f:for>
+				<f:if condition="{imported}">
+					<p>{neos:backend.translate(id: 'import.publish', source: 'Main', package: 'Supertext.NeosTranslation')}</p>
+				</f:if>
+			</f:else>
+		</f:if>
+	</div>
+	<f:render partial="TranslationFiles/Forms" arguments="{_all}" />
+</div>

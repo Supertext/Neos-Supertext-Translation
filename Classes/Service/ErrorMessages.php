@@ -7,10 +7,11 @@ namespace Supertext\NeosTranslation\Service;
 use Supertext\NeosTranslation\Sdk\V1\SupertextException;
 
 /**
- * English messages for administrators (log, CLI output, X-Supertext-Error header): the
- * package has no UI of its own, so there are no translation files (see docs/DEVELOPER.md
- * → Interface strings). Most messages are the SDK's; the ones an administrator has to act
- * on name the setting to change and, for the API key, both Supertext links.
+ * English messages for administrators (log, CLI output, X-Supertext-Error header). The
+ * back-end module's own messages are translated in Resources/Private/Translations (see
+ * docs/DEVELOPER.md → Interface strings); it falls back to these for other errors. Most
+ * messages are the SDK's; the ones an administrator has to act on name the setting to
+ * change and, for the API key, both Supertext links.
  */
 final class ErrorMessages
 {
