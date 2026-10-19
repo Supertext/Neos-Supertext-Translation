@@ -109,8 +109,9 @@ class NodeTranslator
             // Language codes first: an unmapped language stops here, before anything is sent.
             $targetCode = $this->languageResolver->targetCode($targetLanguage);
             $sourceCode = $this->languageResolver->sourceCode($sourceLanguage);
-            // One document per batch; the SDK splits only above ~900k characters.
-            $translated = $this->clientFactory->create()->translateTexts(
+            // One document per batch; the SDK splits only above ~900k characters. Languages with
+            // Translation review go through Supertext's review service (same API, same key).
+            $translated = $this->clientFactory->create($this->languageResolver->review($targetLanguage))->translateTexts(
                 $segments,
                 $targetCode,
                 $sourceCode,

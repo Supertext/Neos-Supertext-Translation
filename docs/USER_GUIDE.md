@@ -36,6 +36,8 @@ After publishing, the page is live in the new language:
 
 ![The public website showing the page "Testo e immagini" in Italian](images/website-italian.png)
 
+**Translation review:** if your administrator turned on *Translation review* for a language, reviewers (your colleagues or Supertext linguists) check and correct the translations on the website. Their corrections come into Neos the next time a page is translated into that language: after a review, translate it again. Texts reviewed once keep their corrected wording in later translations.
+
 ## What gets translated
 
 - Everything you can edit directly on the page (headlines, text, rich text), with its formatting and links kept.

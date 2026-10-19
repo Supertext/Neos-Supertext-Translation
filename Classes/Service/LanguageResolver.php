@@ -38,6 +38,17 @@ class LanguageResolver
     }
 
     /**
+     * *Translation review* for a target language: translations into it go through Supertext's
+     * review service (Settings.yaml's `review` where set, else the choice under Administration →
+     * Supertext; off by default, and off for all when `reviewUrl` is empty).
+     */
+    public function review(string $dimensionValue): bool
+    {
+        return $this->settings->getReviewUrl() !== ''
+            && LanguageMapping::review($dimensionValue, $this->mappingStore->get(), $this->settings->getLanguages());
+    }
+
+    /**
      * True when a variant from $source to $target needs translating: the target is
      * enabled and the languages differ (en_US -> en_UK is a regional variant of the
      * same language and is left alone).

@@ -33,7 +33,7 @@ Neos UI "Create and copy"  ──►  N × CreateNodeVariant   (one per page/con
 | `Reporting\CacheStateStorage` | The reporter's state and the remembered site URL in the persistent Flow cache `Supertext_NeosTranslation_State` (`Configuration/Caches.yaml`, read through the `CacheManager`). |
 | `Reporting\PluginHealthTransport` | Plugin Health's `HttpTransport` over the SDK's (Guzzle), so reports use the same HTTP client as Supertext requests. Plain PHP. |
 | `Reporting\KeyCheckMessages` | The Commando Center's key-check messages (English) with the bare Supertext URLs. |
-| `Api\SupertextClientFactory` | Creates the SDK's `Supertext\NeosTranslation\Sdk\V1\Client` from the settings (key, endpoint, poll interval and timeout, User-Agent `Neos-Supertext-Translation/<version>`). |
+| `Api\SupertextClientFactory` | Creates the SDK's `Supertext\NeosTranslation\Sdk\V1\Client` from the settings (key, endpoint, poll interval and timeout, User-Agent `Neos-Supertext-Translation/<version>`, the version from `Configuration\PackageVersion` as in the reports); `create(true)` for a language with *Translation review* (see *Translation review*). |
 | `Api\GuzzleHttpTransport` | The SDK's `HttpTransport` over Guzzle (a Neos dependency), so ext-curl isn't required. |
 | `Command\SupertextCommandController` | `supertext:translate` (what *Create and copy* does, plus `--subpages`; runs `onRequest` for the version reports), `supertext:export` / `supertext:import` (translation files) and `supertext:check` (package version from `Configuration\PackageVersion`, the language dimension values with their Supertext codes and tone warnings, the API key check with its time, and a `check` report). Runs without authorization checks. |
 | `Service\SegmentCollector` | What is translated of a node (its translatable properties and those of its tethered descendants; with content: every content node below a page), keyed `<node aggregate id>.<property>`. Shared by API translations and translation files. |
@@ -42,7 +42,7 @@ Neos UI "Create and copy"  ──►  N × CreateNodeVariant   (one per page/con
 | `Files\FileTransfer`, `Files\FileTransferException` | Plain-PHP glue to the SDK's `Files\TranslationFiles` for `supertext:export`/`supertext:import` (see *Translation files*). Unit-tested without Neos. |
 | `Service\TranslationFileService` | Flow side of the translation files: languages, node, segments (`SegmentCollector`), missing variants (`NodeVariants`) and the write-back (`TranslationWriter`); for the module also `languages()` (source and target dimension values with labels), `documents()` (the site's pages in tree order) and `label()`. |
 | `Controller\TranslationFilesController` | Back-end module **Management → Supertext** (`Configuration/Settings.yaml` → `Neos.Neos.modules.management.submodules.supertext`, access in `Configuration/Policy.yaml`, templates in `Resources/Private/Templates/TranslationFiles/` and `Partials/TranslationFiles/`). Same service calls as the CLI, but in the user's personal workspace and, for the import, with the user's permissions (see *Translation files*). |
-| `Configuration\Settings` | Typed settings; `SUPERTEXT_API_KEY` / `SUPERTEXT_API_ENDPOINT` win. |
+| `Configuration\Settings` | Typed settings; `SUPERTEXT_API_KEY` / `SUPERTEXT_API_ENDPOINT` / `SUPERTEXT_REVIEW_URL` win. |
 | `Configuration\PackageVersion` | Installed package version via `Composer\InstalledVersions::getPrettyVersion('supertext/neos-translation')`, `unknown` if Composer can't tell. No hardcoded copy. |
 
 Writes go through `ContentRepository::handle()`, so they get history, workspace semantics and the editor's permissions like manual edits. In the UI flow they land in the editor's user workspace and are published with the rest.
@@ -114,6 +114,10 @@ AI file translation API v1, the same as the WordPress plugin and TYPO3 extension
 
 Header `Authorization: Supertext-Auth-Key <key>`; the SDK strips a pasted prefix. HTTP 429 is retried up to 4 times (`Retry-After`, else 1/2/4/8 s with jitter). Base URLs: `https://api.supertext.com/v1/` (live), `api.staging…`, `api.testing…`.
 
+### Translation review
+
+Per target language, `review` (checkbox under Administration → Supertext, stored with the language's code by `LanguageMappingStore`; `languages.<value>.review` in Settings.yaml wins; read by `LanguageMapping::review()` / `LanguageResolver::review()`). `NodeTranslator` asks `SupertextClientFactory::create($languageResolver->review($target))`: for a review language a second SDK client with the same key, poll interval, timeout, transport and User-Agent whose base URL is `reviewUrl` (`Settings::getReviewUrl()`: `SUPERTEXT_REVIEW_URL`, else the setting, default `SupertextClientFactory::REVIEW_URL`, the translation proxy of [Supertext Localization Review](https://github.com/Supertext/Localization-Review-Supertext-Translation)). `translateTexts()` does upload, status, download and delete with that one client, so a job is always collected where it was submitted. The proxy speaks the same API v1, forwards to the live Supertext API with the site's key, stores every segment per key and serves reviewers' corrections on the next upload, so nothing else changes in the package. `reviewUrl: ''` turns it off for every language (`review()` is false, the module shows the checkboxes as off), and a review URL equal to the endpoint gives the normal client (`SupertextClientFactory::baseUrl()`). The API key check and version reports (`Reporting\Reporting`, own client on the endpoint) and translation files never use it. Tests: `Tests/SdkTest.php` (review language: all four calls to the review URL; other languages direct; empty `reviewUrl` off; default URL; `SUPERTEXT_REVIEW_URL` wins; same User-Agent) and `Tests/LanguageMappingTest.php` (checkbox stored, Settings.yaml override, off by default).
+
 ### Language codes
 
 Supertext accepts only the codes of `GET features` (the SDK's `V1\Languages::TARGETS` / `SOURCES`): targets are regional only for German, English, French, Italian and Portuguese (`de-CH`, `en-US`, `pt-BR`), have a script for Chinese and Serbian (`zh-Hans`, `sr-Latn`), a dialect for Swiss German (`gsw-u-sd-chzh`) and are **bare for all others** (`es`, `nl`, `sl`). Sources are bare. The old default regions (`es-ES`, `sl-SI`, `zh-CN`) are rejected by the live API, so nothing is guessed any more (SDK 0.2.0); since SDK 0.4.0 an unmapped value gets the SDK's default where one is obvious:
@@ -162,7 +166,7 @@ php Tests/ReportingTest.php      # version reports, key check, ping, state stora
 php Tests/FileTransferTest.php   # translation files: export/import glue around the SDK's TranslationFiles, no Neos needed
 php Tests/LanguageMappingTest.php # Administration → Supertext: preselection, Settings.yaml override, saving, codes used, options; no Neos needed
 php Tests/InterfaceStringsTest.php # module strings: en/de/fr/it Main.xlf have the same ids, targets and placeholders; every id used exists
-php Tests/SdkTest.php            # Guzzle transport + bundled SDK round trip (mocked HTTP), language mapping/unmapped errors, error codes;
+php Tests/SdkTest.php            # Guzzle transport + bundled SDK round trip (mocked HTTP), language mapping/unmapped errors, error codes, Translation review routing;
                                  # needs Guzzle from vendor/ or demo/Packages/Libraries (composer install --working-dir=demo)
 ```
 
@@ -222,6 +226,7 @@ Neos has no first-run "create admin" screen in this setup (`neos/neos-setup` is 
 | `DEMO_ADMIN_*`, `DEMO_EDITOR_*` | Demo accounts (above) |
 | `SUPERTEXT_API_KEY` | Supertext key |
 | `SUPERTEXT_API_ENDPOINT` | Optional, e.g. the staging API |
+| `SUPERTEXT_REVIEW_URL` | Optional: another review service than Supertext's for languages with *Translation review* (`reviewUrl`; empty keeps the default) |
 | `SUPERTEXT_VERSION_REPORTS` | Optional; `0` turns the version reports off (default on) |
 | `PORT` | `8080`, matching the domain's target port |
 | `RAILWAY_DOCKERFILE_PATH` | `demo/Dockerfile` (the build context is the repo root) |
@@ -272,7 +277,8 @@ Translating hooks into the content repository, so editors see Neos' own dialogs 
 
 - Translation runs synchronously inside the editor's request (up to `pollTimeout` per document). Planned: a job queue for very large pages.
 - Errors are only logged (and sent as a response header); the Neos UI shows no message yet.
-- No "retranslate" action for existing translations, and no sync of later changes in the source language.
+- No "retranslate" action for existing translations, and no sync of later changes in the source language. With *Translation review*, reviewers' corrections reach Neos only with the next translation of a page (no push).
+- No translation memory of its own; the review service keeps one for languages with *Translation review*.
 - Content added to the source page after translating isn't carried over automatically.
 - Only `string` properties are translated; value objects (e.g. structured link or list editors) are not.
 - Management → Supertext exports one page (with its content) per file and only from the site's default language; subpages, several pages at once and another source language are CLI-only for now (`supertext:export` per node, `--source`).

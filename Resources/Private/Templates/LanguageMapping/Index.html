@@ -4,11 +4,13 @@
 	.supertext-mapping > p { margin-bottom: 16px; }
 	.supertext-mapping table { margin-bottom: 20px; }
 	.supertext-mapping td { vertical-align: middle; }
+	.supertext-mapping th, .supertext-mapping td:first-child { white-space: nowrap; }
 	.supertext-mapping h2 { font-size: 18px; margin-bottom: 8px; }
 	.supertext-mapping .neos-select { margin: 0; }
 	.supertext-mapping .neos-select select { min-width: 280px; }
 	.supertext-mapping .supertext-value { display: inline; opacity: .7; }
 	.supertext-mapping .supertext-note { display: block; margin-top: 4px; font-size: 12px; opacity: .7; }
+	.supertext-mapping .supertext-review-help { max-width: 760px; margin-bottom: 16px; opacity: .8; }
 	.supertext-mapping .supertext-version { margin-top: 24px; opacity: .7; }
 </style>
 <div class="neos-content neos-container-fluid">
@@ -25,6 +27,7 @@
 								<th>{neos:backend.translate(id: 'mapping.language', source: 'Main', package: 'Supertext.NeosTranslation')}</th>
 								<th>{neos:backend.translate(id: 'mapping.code', source: 'Main', package: 'Supertext.NeosTranslation')}</th>
 								<th>{neos:backend.translate(id: 'mapping.politeness', source: 'Main', package: 'Supertext.NeosTranslation')}</th>
+								<th>{neos:backend.translate(id: 'mapping.review', source: 'Main', package: 'Supertext.NeosTranslation')}</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -64,10 +67,36 @@
 											</f:else>
 										</f:if>
 									</td>
+									<td>
+										<f:if condition="{row.reviewFromSettings}">
+											<f:then>
+												<code>{f:if(condition: row.review, then: 'true', else: 'false')}</code>
+												<span class="supertext-note">{neos:backend.translate(id: 'mapping.reviewFromSettings', arguments: {0: row.value}, source: 'Main', package: 'Supertext.NeosTranslation')}</span>
+											</f:then>
+											<f:else>
+												<f:if condition="{reviewEnabled}">
+													<f:then>
+														<label class="neos-checkbox" for="supertext-review-{i.index}">
+															<f:form.checkbox name="mapping[{row.value}][review]" value="1" id="supertext-review-{i.index}" checked="{row.review}" /><span></span>
+														</label>
+													</f:then>
+													<f:else>
+														<f:form.hidden name="mapping[{row.value}][review]" value="{f:if(condition: row.review, then: '1')}" />–
+													</f:else>
+												</f:if>
+											</f:else>
+										</f:if>
+									</td>
 								</tr>
 							</f:for>
 						</tbody>
 					</table>
+					<p class="supertext-review-help">
+						<f:if condition="{reviewEnabled}">
+							<f:then>{neos:backend.translate(id: 'mapping.review.help', source: 'Main', package: 'Supertext.NeosTranslation')}</f:then>
+							<f:else>{neos:backend.translate(id: 'mapping.review.off', source: 'Main', package: 'Supertext.NeosTranslation')}</f:else>
+						</f:if>
+					</p>
 					<f:form.submit value="{neos:backend.translate(id: 'mapping.save', source: 'Main', package: 'Supertext.NeosTranslation')}" class="neos-button neos-button-primary" />
 				</f:form>
 			</f:then>

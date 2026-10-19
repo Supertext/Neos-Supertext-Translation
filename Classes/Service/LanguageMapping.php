@@ -10,6 +10,9 @@ use Supertext\NeosTranslation\Sdk\V1\Languages;
  * The language mapping (dimension value → Supertext code and tone), without Neos classes so
  * it is tested on its own (Tests/LanguageMappingTest.php).
  *
+ * Per language also *Translation review* (`review`: translations into it go through Supertext's
+ * review service, see Api\SupertextClientFactory).
+ *
  * Two sources: what an administrator chose under Administration → Supertext (stored in the
  * persistent cache Supertext_NeosTranslation_State, see LanguageMappingStore) and the
  * `Supertext.NeosTranslation.languages.<value>` settings (Settings.yaml), which win where set,
@@ -33,7 +36,7 @@ final class LanguageMapping
     /**
      * The codes to translate with: stored choices, overridden by the settings' `code`s.
      *
-     * @param array<string, array{code?: string, politeness?: string}> $stored
+     * @param array<string, array{code?: string, politeness?: string, review?: bool}> $stored
      * @param mixed $settingsLanguages the `languages` setting
      * @return array<string, string>
      */
@@ -72,13 +75,25 @@ final class LanguageMapping
     /**
      * "more", "less" or "default": the settings' `politeness` where set, else the stored choice.
      *
-     * @param array<string, array{code?: string, politeness?: string}> $stored
+     * @param array<string, array{code?: string, politeness?: string, review?: bool}> $stored
      */
     public static function politeness(string $value, array $stored, mixed $settingsLanguages): string
     {
         $config = is_array($settingsLanguages) && is_array($settingsLanguages[$value] ?? null) ? $settingsLanguages[$value] : [];
         $politeness = isset($config['politeness']) ? (string)$config['politeness'] : (string)($stored[$value]['politeness'] ?? 'default');
         return in_array($politeness, ['more', 'less'], true) ? $politeness : 'default';
+    }
+
+    /**
+     * *Translation review* for a language: the settings' `review` where set, else the stored choice
+     * (off by default).
+     *
+     * @param array<string, array{code?: string, politeness?: string, review?: bool}> $stored
+     */
+    public static function review(string $value, array $stored, mixed $settingsLanguages): bool
+    {
+        $config = is_array($settingsLanguages) && is_array($settingsLanguages[$value] ?? null) ? $settingsLanguages[$value] : [];
+        return isset($config['review']) ? (bool)$config['review'] : (bool)($stored[$value]['review'] ?? false);
     }
 
     /**
@@ -113,8 +128,8 @@ final class LanguageMapping
      * 'settings', 'stored', 'suggested' or 'none'.
      *
      * @param list<array{value: string, label: string}> $languages the language dimension's values
-     * @param array<string, array{code?: string, politeness?: string}> $stored
-     * @return list<array{value: string, label: string, selected: string, source: string, overridden: bool, politeness: string, politenessFromSettings: bool, politenessSupported: bool}>
+     * @param array<string, array{code?: string, politeness?: string, review?: bool}> $stored
+     * @return list<array{value: string, label: string, selected: string, source: string, overridden: bool, politeness: string, politenessFromSettings: bool, politenessSupported: bool, review: bool, reviewFromSettings: bool}>
      */
     public static function rows(array $languages, array $stored, mixed $settingsLanguages): array
     {
@@ -142,6 +157,8 @@ final class LanguageMapping
                 'politeness' => self::politeness($value, $stored, $settingsLanguages),
                 'politenessFromSettings' => isset($config['politeness']),
                 'politenessSupported' => $selected !== '' && Languages::supportsPoliteness($selected) === true,
+                'review' => self::review($value, $stored, $settingsLanguages),
+                'reviewFromSettings' => isset($config['review']),
             ];
         }
         return $rows;
@@ -150,12 +167,13 @@ final class LanguageMapping
     /**
      * Checks a submitted form against Supertext's list and returns what to store: only known
      * dimension values, only Supertext target codes, a tone only where the target offers one.
-     * Values set in the settings are left as they were stored (their combo box is read-only).
+     * Values set in the settings are left as they were stored (their combo box is read-only);
+     * *Translation review* is stored for every known value (on only when ticked).
      *
      * @param mixed $input mapping[<value>][code|politeness] from the form
      * @param list<string> $knownValues the language dimension's values
-     * @param array<string, array{code?: string, politeness?: string}> $stored what is stored now
-     * @return array{mapping: array<string, array{code: string, politeness: string}>, invalid: list<string>}
+     * @param array<string, array{code?: string, politeness?: string, review?: bool}> $stored what is stored now
+     * @return array{mapping: array<string, array{code: string, politeness: string, review: bool}>, invalid: list<string>}
      */
     public static function fromForm(mixed $input, array $knownValues, array $stored, mixed $settingsLanguages): array
     {
@@ -165,12 +183,18 @@ final class LanguageMapping
         foreach ($stored as $value => $entry) {
             // Keep choices for values that are set in the settings or not in the dimension (any more).
             if (isset($overrides[$value]) || !in_array((string)$value, $knownValues, true)) {
-                $mapping[(string)$value] = ['code' => (string)($entry['code'] ?? ''), 'politeness' => (string)($entry['politeness'] ?? 'default')];
+                $mapping[(string)$value] = ['code' => (string)($entry['code'] ?? ''), 'politeness' => (string)($entry['politeness'] ?? 'default'), 'review' => (bool)($entry['review'] ?? false)];
             }
         }
         foreach (is_array($input) ? $input : [] as $value => $entry) {
             $value = (string)$value;
-            if (!in_array($value, $knownValues, true) || isset($overrides[$value]) || !is_array($entry)) {
+            if (!in_array($value, $knownValues, true) || !is_array($entry)) {
+                continue;
+            }
+            $review = in_array($entry['review'] ?? '', ['1', 1, true, 'on'], true);
+            if (isset($overrides[$value])) {
+                // Code set in Settings.yaml: only the review checkbox comes from the form.
+                $mapping[$value] = ['code' => $mapping[$value]['code'] ?? '', 'politeness' => $mapping[$value]['politeness'] ?? 'default', 'review' => $review];
                 continue;
             }
             $code = trim((string)($entry['code'] ?? ''));
@@ -183,14 +207,14 @@ final class LanguageMapping
             if (!in_array($politeness, self::POLITENESS, true) || $code === '' || Languages::supportsPoliteness($code) !== true) {
                 $politeness = 'default';
             }
-            $mapping[$value] = ['code' => $code, 'politeness' => $politeness];
+            $mapping[$value] = ['code' => $code, 'politeness' => $politeness, 'review' => $review];
         }
         ksort($mapping);
         return ['mapping' => $mapping, 'invalid' => $invalid];
     }
 
     /**
-     * @return array<string, array{code?: string, politeness?: string}>
+     * @return array<string, array{code?: string, politeness?: string, review?: bool}>
      */
     public static function decode(?string $json): array
     {
@@ -201,7 +225,8 @@ final class LanguageMapping
                 $stored[(string)$value] = array_filter([
                     'code' => is_string($entry['code'] ?? null) ? $entry['code'] : null,
                     'politeness' => is_string($entry['politeness'] ?? null) ? $entry['politeness'] : null,
-                ], static fn (?string $v): bool => $v !== null);
+                    'review' => is_bool($entry['review'] ?? null) ? $entry['review'] : null,
+                ], static fn (string|bool|null $v): bool => $v !== null);
             }
         }
         return $stored;

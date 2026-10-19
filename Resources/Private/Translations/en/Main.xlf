@@ -164,6 +164,18 @@
 			<trans-unit id="mapping.version" xml:space="preserve">
 				<source>Supertext Translation for Neos {0}</source>
 			</trans-unit>
+			<trans-unit id="mapping.review" xml:space="preserve">
+				<source>Translation review</source>
+			</trans-unit>
+			<trans-unit id="mapping.review.help" xml:space="preserve">
+				<source>Translation review: translations into a ticked language go through Supertext's review service, so reviewers can check and correct them on the website with the Supertext Localization Review extension. Their corrections are used the next time the page is translated.</source>
+			</trans-unit>
+			<trans-unit id="mapping.review.off" xml:space="preserve">
+				<source>Translation review is off for all languages: the setting Supertext.NeosTranslation.reviewUrl is empty.</source>
+			</trans-unit>
+			<trans-unit id="mapping.reviewFromSettings" xml:space="preserve">
+				<source>Set in Settings.yaml (Supertext.NeosTranslation.languages.{0}.review)</source>
+			</trans-unit>
 		</body>
 	</file>
 </xliff>

@@ -240,6 +240,7 @@ class SupertextCommandController extends CommandController
     {
         $this->outputLine(PackageVersion::label());
         $this->outputLine('Endpoint: %s', [$this->settings->getBaseUrl()]);
+        $this->outputLine('Review service (Translation review): %s', [$this->settings->getReviewUrl() !== '' ? $this->settings->getReviewUrl() : 'off (reviewUrl is empty)']);
 
         $languagesOk = $this->outputLanguages($contentRepository);
 
@@ -295,7 +296,13 @@ class SupertextCommandController extends CommandController
                 continue;
             }
             $politeness = $this->languageResolver->politeness($value->value);
-            $line = sprintf('  %s → %s%s', $value->value, $code, $politeness !== 'default' ? ' (' . $politeness . ')' : '');
+            $line = sprintf(
+                '  %s → %s%s%s',
+                $value->value,
+                $code,
+                $politeness !== 'default' ? ' (' . $politeness . ')' : '',
+                $this->languageResolver->review($value->value) ? ', Translation review' : '',
+            );
             $this->outputLine($line);
             if (LanguageResolver::politenessUnsupported($code, $politeness)) {
                 $this->outputLine('    <comment>%s</comment>', [ErrorMessages::forException(

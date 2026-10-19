@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Supertext\NeosTranslation\Configuration;
 
 use Neos\Flow\Annotations as Flow;
+use Supertext\NeosTranslation\Api\SupertextClientFactory;
 use Supertext\NeosTranslation\Service\LanguageMapping;
 
 /**
@@ -43,6 +44,20 @@ class Settings
         return rtrim($url, '/') . '/';
     }
 
+    /**
+     * Supertext's review service for languages with *Translation review* on: `reviewUrl`
+     * (default SupertextClientFactory::REVIEW_URL), SUPERTEXT_REVIEW_URL wins when set and not
+     * empty. '' (setting `reviewUrl: ''`) turns review off for every language.
+     */
+    public function getReviewUrl(): string
+    {
+        $fromEnv = getenv('SUPERTEXT_REVIEW_URL');
+        $url = is_string($fromEnv) && trim($fromEnv) !== ''
+            ? trim($fromEnv)
+            : trim((string)($this->settings['reviewUrl'] ?? SupertextClientFactory::REVIEW_URL));
+        return $url === '' ? '' : rtrim($url, '/') . '/';
+    }
+
     public function getPollInterval(): int
     {
         return max(1, (int)($this->settings['pollInterval'] ?? 2));
@@ -58,7 +73,7 @@ class Settings
         return (string)($this->settings['languageDimension'] ?? 'language') ?: 'language';
     }
 
-    /** @return array{code?: string, politeness?: string, enabled?: bool} */
+    /** @return array{code?: string, politeness?: string, enabled?: bool, review?: bool} */
     public function getLanguage(string $dimensionValue): array
     {
         $languages = $this->settings['languages'] ?? [];

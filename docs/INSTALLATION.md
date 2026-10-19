@@ -12,7 +12,7 @@ For administrators setting up the package on a Neos site.
 | PHP | 8.2 or newer, with `ext-dom` |
 | Content dimensions | A language dimension (named `language` by default) |
 | Supertext | An account ([create one or log in](https://www.supertext.com/person/en/account/signin)) with an API key ([supertext.com → Integrations → API](https://www.supertext.com/en/integrations/api), requires the Admin role) |
-| Network | The web server must reach `https://api.supertext.com` over HTTPS (and, while *Send version information to Supertext* is on, `https://commandocenter-production.up.railway.app`) |
+| Network | The web server must reach `https://api.supertext.com` over HTTPS (and, for [Translation review](#translation-review), Supertext's review service `https://localizationreview-production.up.railway.app`; while *Send version information to Supertext* is on, `https://commandocenter-production.up.railway.app`) |
 
 ## 1. Add the package
 
@@ -57,12 +57,13 @@ Check it:
 ```text
 Supertext Translation for Neos 0.1.0
 Endpoint: https://api.supertext.com/v1/
+Review service (Translation review): https://localizationreview-production.up.railway.app/v1/
 
 Languages (dimension value → Supertext code):
   en_US → en-US
   en_UK → en-GB
   de → de-CH (more)
-  fr → fr-CH (more)
+  fr → fr-CH (more), Translation review
   it → it-CH (more)
 
 API key checked: the connection to Supertext works. (2026-10-14T08:00:00Z)
@@ -81,16 +82,17 @@ If the key is wrong, it says *Supertext rejected the API key* (or *No API key is
 
 The package translates whenever a page or content element is created in another value of the **language dimension**. Every dimension value needs a **Supertext language**: Supertext accepts only its own codes (see *Supertext language codes* below). You choose them in the back end under **Administration → Supertext** (administrators only):
 
-![Administration → Supertext: English (US) with Supertext's suggestion English (United States) (en-US); English (UK) set in Settings.yaml as en-GB, read-only; Deutsch, Français and Italiano set to German, French and Italian (Switzerland) with the formal form of address; Save button and package version below](images/module-languages.png)
+![Administration → Supertext: English (US) with Supertext's suggestion English (United States) (en-US); English (UK) set in Settings.yaml as en-GB, read-only; Deutsch, Français and Italiano set to German, French and Italian (Switzerland) with the formal form of address; a Translation review checkbox per language, none ticked; Save button and package version below](images/module-languages.png)
 
 - One row per value of the language dimension (all content repositories, the source language included: one mapping serves both directions), with its label and value (e.g. *Deutsch (de)*), a combo box with Supertext's languages (*German (Switzerland) (de-CH)*, names in your interface language) and, for the languages that offer one, the **form of address** (*Default*, *Formal*, *Informal*).
 - **Preselected** is Supertext's suggestion where one is obvious: a value that already **is** a Supertext code, apart from upper/lower case and `_`/`-` (`en_US` → `en-US`, `es` → `es`, `de_CH` → `de-CH`), else the default (`de` → `de-DE`, `en` → `en-US`, `fr` → `fr-FR`, `it` → `it-IT`, `pt` → `pt-PT`, `zh` → `zh-Hans`, `sr` → `sr-Latn`, `zh_TW` → `zh-Hant`, a region of a bare code → the bare code: `es_ES` → `es`, `nl_NL` → `nl`). A language nobody chose is translated with that suggestion, so most sites need no setup. Choose another variant where you want one, e.g. `de` → *German (Switzerland)*.
 - A value **without a suggestion** (`en_UK`, `en_IE`, `de_LI`, `gsw`, …) shows *— choose —*. Until you choose, translating into or from that language stops before anything is sent, with *The language en_UK has no Supertext language yet. Ask your administrator to choose one under Administration → Supertext (or to set Supertext.NeosTranslation.languages.en_UK.code in Settings.yaml, e.g. 'de-CH').*
+- **Translation review**: a checkbox per language, off by default; see [Translation review](#translation-review).
 - **Save** checks every choice against Supertext's list. The choices are stored in the persistent Flow cache `Supertext_NeosTranslation_State` (`Data/Persistent/Cache`, not emptied by `flow:cache:flush`; with several web servers give it a shared backend, see *5. Version information*).
 
 The same mapping is used when the language is the source: `de-CH` is sent as source `de` (sources have no region).
 
-**Override in Settings.yaml** (for automated setups): `languages.<value>.code` and `languages.<value>.politeness` win over the module for the languages they name; the module shows them read-only with the setting's name. `enabled: false` (Settings.yaml only) never translates into a language.
+**Override in Settings.yaml** (for automated setups): `languages.<value>.code`, `languages.<value>.politeness` and `languages.<value>.review` win over the module for the languages they name; the module shows them read-only with the setting's name. `enabled: false` (Settings.yaml only) never translates into a language.
 
 ```yaml
 Supertext:
@@ -143,6 +145,20 @@ and for this package (the settings only; choices made under Administration → S
 For translating, editors use Neos' own *Create and copy* dialog, which follows each user's Neos interface language (user menu → *User Settings* → *Interface Language*), English, German, French and Italian included. The package's screens, **Management → Supertext** (export and import of translation files) and **Administration → Supertext** (languages), come in the same four languages and follow the same setting (`Resources/Private/Translations/{en,de,fr,it}/Main.xlf`). Text for administrators only, the output of the `supertext:*` CLI commands, the `X-Supertext-Error` response header and log lines, is in English.
 
 
+### Translation review
+
+With **Translation review**, people check the translations on the website itself and correct them there: customers or Supertext linguists open the original and the translated page side by side in Chrome with the *Supertext Localization Review* extension and fix texts in a side panel. Their corrections come back into Neos.
+
+Turn it on per language that is translated **into**: **Administration → Supertext** → tick **Translation review** in the language's row (e.g. *Français*) → **Save**. Untick it to turn it off again; nothing else changes. For automated setups: `languages.<value>.review: true` in Settings.yaml (wins over the checkbox).
+
+- Translations into that language then go through Supertext's review service instead of directly to Supertext. It answers exactly like Supertext and passes everything on with your API key, so billing, languages, formal/informal and error messages stay the same.
+- The review service keeps every translation of your account. A text it has translated before gets the same translation again (without a new Supertext call), and once a reviewer has corrected it, the corrected text.
+- **Corrections arrive with the next translation:** after a review, translate the pages again (delete the language version and *Create and copy* it again, or `./flow supertext:translate`) to write the corrections into Neos. As always, translating again overwrites manual changes in the translated texts.
+- Reviewers get a review link for your site from Supertext; nothing to set up in Neos.
+- The review service works with keys of the **live** Supertext API. With another `endpoint` (staging, testing), leave review off.
+- Export for translation and import of translated files don't use the review service. The automatic API key check and the version information still go directly to Supertext.
+- The service's address is the setting `reviewUrl` (default: Supertext's review service; `SUPERTEXT_REVIEW_URL` wins when set). `reviewUrl: ''` turns review off for every language (the module then says so). Only change it when Supertext gives you another address. `supertext:check` shows the address and *Translation review* next to each language that has it.
+
 ## 4. Check it works
 
 Open a page in the backend, switch the language menu to a language the page doesn't exist in yet, and choose **Create and copy** — the page appears translated after a few seconds (see the [user guide](USER_GUIDE.md)). Or from the CLI:
@@ -183,12 +199,14 @@ All under `Supertext.NeosTranslation`:
 | --- | --- | --- |
 | `enabled` | `true` | Translate automatically when nodes are created in another language |
 | `apiKey` | `''` | API key; `SUPERTEXT_API_KEY` wins |
-| `endpoint` | `https://api.supertext.com/v1/` | API base URL; `SUPERTEXT_API_ENDPOINT` wins |
+| `endpoint` | `https://api.supertext.com/v1/` | API base URL; `SUPERTEXT_API_ENDPOINT` wins. For [Translation review](#translation-review) use the languages' checkbox instead |
+| `reviewUrl` | Supertext's review service (`https://localizationreview-production.up.railway.app/v1/`) | Address of the review service for languages with *Translation review* on; `SUPERTEXT_REVIEW_URL` wins when set. `''` turns review off for every language. Only change it when Supertext gives you another address |
 | `pollInterval` | `2` | Seconds between status checks |
 | `pollTimeout` | `240` | Maximum seconds to wait for one document |
 | `languageDimension` | `language` | Name of the language dimension |
 | `languages.<value>.code` | none: the choice under Administration → Supertext, else Supertext's suggestion | Overrides the language mapping for this dimension value: Supertext code (as target; as source without region). Shown read-only in the module; see *3. Languages* |
 | `languages.<value>.politeness` | none: the choice under Administration → Supertext, else `default` | Overrides the form of address: `more` (formal), `less` (informal) or `default`; only for targets that offer a tone |
+| `languages.<value>.review` | none: the checkbox under Administration → Supertext (off) | Overrides *Translation review* for translations into this language (`true`/`false`) |
 | `languages.<value>.enabled` | `true` | `false` never translates into that language |
 | `versionReports` | `true` | *Send version information to Supertext*: sends the site URL and the versions of this plugin, Neos and PHP to Supertext after an update and when the API key changes, so Supertext support can see which version you run. No content, no API key and no personal data are sent. `SUPERTEXT_VERSION_REPORTS` (`0`/`1`) wins. See *5. Version information and the API key check* |
 | `editors.plainText` | TextField, TextArea editors | Inspector editors whose string properties are translated as plain text |
@@ -246,6 +264,8 @@ Translations already made stay in place; they are ordinary Neos content.
 | `The language … has no Supertext language yet` | The dimension value has no Supertext suggestion and nobody chose one. Choose it under Administration → Supertext (or set `languages.<value>.code` with a code from *Supertext language codes*, e.g. `de-CH`); `supertext:check` lists the unmapped values. |
 | Administration → Supertext is missing from the menu | Only administrators (`Neos.Neos:Administrator`) see it, unless you granted its privilege targets to another role; or it is disabled (`enabled: false`). |
 | A combo box under Administration → Supertext shows a code as text, not a combo box | The language is set in Settings.yaml (`languages.<value>.code`/`politeness`), which wins; change it there. |
+| "Authentication failure" only for languages with *Translation review* | The review service only works with keys of the live Supertext API: with another `endpoint` leave review off. |
+| Reviewers' corrections don't show up in Neos | They arrive with the next translation: translate the pages into that language again. Check that the language's *Translation review* is ticked (`supertext:check` lists it). |
 | `Supertext offers no formal or informal tone for this language` | `politeness` is set for a target without a tone (e.g. `en-GB`, `rm`). Set it to `default` or remove it. |
 | `Supertext does not support this language pair` | The mapped code isn't one Supertext accepts (e.g. `es-ES`, `zh-CN`): use a code from *Supertext language codes*. |
 | `supertext:check`: *Site URL: unknown* | Set `Neos.Flow.http.baseUri` or a primary domain for the site, or open the Neos back end once; until then no version information is sent. |

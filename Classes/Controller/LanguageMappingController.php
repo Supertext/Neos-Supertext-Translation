@@ -18,7 +18,8 @@ use Supertext\NeosTranslation\Service\LanguageMappingStore;
 
 /**
  * Back-end module Administration → Supertext: one combo box per value of the language
- * dimension with Supertext's target codes (and the tone where the code offers one), stored by
+ * dimension with Supertext's target codes (and the tone where the code offers one) and the
+ * *Translation review* checkbox (off when `reviewUrl` is empty), stored by
  * LanguageMappingStore. Codes and tones set in Settings.yaml (`languages.<value>.code` /
  * `politeness`) win and are shown read-only. The rules are in Service\LanguageMapping.
  */
@@ -55,6 +56,7 @@ class LanguageMappingController extends AbstractModuleController
             ],
             'politenessCodes' => implode(' ', LanguageMapping::politenessCodes()),
             'dimension' => $this->supertextSettings->getLanguageDimension(),
+            'reviewEnabled' => $this->supertextSettings->getReviewUrl() !== '',
             'version' => $version,
             'versionUrl' => preg_match('/^\d+\.\d+\.\d+$/', $version) === 1
                 ? 'https://github.com/Supertext/Neos-Supertext-Translation/releases/tag/v' . $version

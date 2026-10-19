@@ -22,6 +22,9 @@ spl_autoload_register(static function (string $class): void {
 });
 require_once __DIR__ . '/../Classes/Api/GuzzleHttpTransport.php';
 require_once __DIR__ . '/../Classes/Service/LanguageMapping.php';
+require_once __DIR__ . '/../Classes/Configuration/PackageVersion.php';
+require_once __DIR__ . '/../Classes/Configuration/Settings.php';
+require_once __DIR__ . '/../Classes/Api/SupertextClientFactory.php';
 require_once __DIR__ . '/../Classes/Service/LanguageResolver.php';
 require_once __DIR__ . '/../Classes/Service/ErrorMessages.php';
 
@@ -30,6 +33,8 @@ use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Middleware;
 use GuzzleHttp\Psr7\Response;
 use Supertext\NeosTranslation\Api\GuzzleHttpTransport;
+use Supertext\NeosTranslation\Api\SupertextClientFactory;
+use Supertext\NeosTranslation\Configuration\Settings;
 use Supertext\NeosTranslation\Sdk\V1\Client;
 use Supertext\NeosTranslation\Sdk\V1\Languages;
 use Supertext\NeosTranslation\Sdk\V1\Segment;
@@ -144,6 +149,58 @@ try {
     $check('unknown language: error code', $e->errorCode, 'invalid_language_pair');
     $check('unknown language: codes', [$e->sourceLang, $e->targetLang], ['en', 'xx-YY']);
 }
+
+// 5. Translation review: a language with review on goes to the review service (all four calls),
+//    others go directly to Supertext; an empty reviewUrl turns it off; the default is
+//    Supertext's review service; SUPERTEXT_REVIEW_URL wins.
+$factory = static function (array $settingsValues): SupertextClientFactory {
+    $settings = (new ReflectionClass(Settings::class))->newInstanceWithoutConstructor();
+    (fn () => $this->settings = $settingsValues)->call($settings);
+    $factory = new SupertextClientFactory();
+    (fn () => $this->settings = $settings)->call($factory);
+    return $factory;
+};
+$run = static function (SupertextClientFactory $factory, bool $review): array {
+    $history = [];
+    $stack = HandlerStack::create(new MockHandler([
+        new Response(200, [], '{"file_id":"r1"}'),
+        new Response(200, [], '{"status":"done"}'),
+        new Response(200, [], '<html><body><div data-st-id="0">Hallo</div></body></html>'),
+        new Response(204),
+    ]));
+    $stack->push(Middleware::history($history));
+    $factory->create($review, new GuzzleHttpTransport(new \GuzzleHttp\Client(['handler' => $stack])))->translateTexts([new Segment('Hello')], 'de-CH', 'en');
+    return array_map(static fn (array $h): string => $h['request']->getMethod() . ' ' . $h['request']->getUri(), $history);
+};
+$base = ['apiKey' => 'test-key', 'endpoint' => 'https://api.supertext.com/v1/', 'pollInterval' => 1, 'pollTimeout' => 30];
+putenv('SUPERTEXT_REVIEW_URL');
+$check('review: default is the review service', (fn () => $this->settings->getReviewUrl())->call($factory($base)), SupertextClientFactory::REVIEW_URL);
+$check('review: default URL', SupertextClientFactory::REVIEW_URL, 'https://localizationreview-production.up.railway.app/v1/');
+$check('review language goes to the review service (all four calls)', $run($factory($base + ['reviewUrl' => 'https://review.test/v1']), true), [
+    'POST https://review.test/v1/translate/ai/file',
+    'GET https://review.test/v1/translate/ai/file/r1/status',
+    'GET https://review.test/v1/translate/ai/file/r1/translation',
+    'DELETE https://review.test/v1/translate/ai/file/r1',
+]);
+$check('other languages go directly to Supertext', $run($factory($base + ['reviewUrl' => 'https://review.test/v1']), false), [
+    'POST https://api.supertext.com/v1/translate/ai/file',
+    'GET https://api.supertext.com/v1/translate/ai/file/r1/status',
+    'GET https://api.supertext.com/v1/translate/ai/file/r1/translation',
+    'DELETE https://api.supertext.com/v1/translate/ai/file/r1',
+]);
+$check('empty reviewUrl: review off, directly to Supertext', $run($factory($base + ['reviewUrl' => '']), true)[0], 'POST https://api.supertext.com/v1/translate/ai/file');
+$check('reviewUrl equal to the API: no second endpoint', SupertextClientFactory::baseUrl(true, 'https://api.supertext.com/v1/', 'https://api.supertext.com/v1'), 'https://api.supertext.com/v1/');
+putenv('SUPERTEXT_REVIEW_URL=https://other-review.test/v1');
+$check('SUPERTEXT_REVIEW_URL wins', $run($factory($base + ['reviewUrl' => '']), true)[0], 'POST https://other-review.test/v1/translate/ai/file');
+putenv('SUPERTEXT_REVIEW_URL');
+$userAgent = null;
+$uaStack = HandlerStack::create(new MockHandler([new Response(200, [], '{}')]));
+$uaStack->push(Middleware::mapRequest(static function ($request) use (&$userAgent) { $userAgent = $request->getHeaderLine('User-Agent'); return $request; }));
+try {
+    $factory($base)->create(true, new GuzzleHttpTransport(new \GuzzleHttp\Client(['handler' => $uaStack])))->getFeatures();
+} catch (\Throwable) {
+}
+$check('review client: same User-Agent with the package version', str_contains((string)$userAgent, 'Neos-Supertext-Translation/'), true);
 
 foreach ($failures as $failure) {
     fwrite(STDERR, $failure . "\n");

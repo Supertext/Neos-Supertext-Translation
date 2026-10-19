@@ -76,16 +76,37 @@ $result = LanguageMapping::fromForm([
     'unknown' => ['code' => 'nl'],                           // not a dimension value: ignored
 ], $known, $stored, $settings);
 $check('saved mapping', $result['mapping'], [
-    'de' => ['code' => 'de-CH', 'politeness' => 'more'],
-    'en_US' => ['code' => 'en-GB', 'politeness' => 'default'],
-    'fr' => ['code' => '', 'politeness' => 'default'],
-    'gone' => ['code' => 'nl', 'politeness' => 'default'],
+    'de' => ['code' => 'de-CH', 'politeness' => 'more', 'review' => false],
+    'en_US' => ['code' => 'en-GB', 'politeness' => 'default', 'review' => false],
+    'fr' => ['code' => '', 'politeness' => 'default', 'review' => false],
+    'gone' => ['code' => 'nl', 'politeness' => 'default', 'review' => false],
+    'it' => ['code' => '', 'politeness' => 'default', 'review' => false],
 ]);
 $check('nothing invalid', $result['invalid'], []);
 $invalid = LanguageMapping::fromForm(['de' => ['code' => 'de-XX'], 'en_IE' => ['code' => 'en']], $known, [], []);
 $check('codes not in the list are refused', $invalid['invalid'], ['de', 'en_IE']);
 $check('refused codes are not stored', $invalid['mapping'], []);
 $check('not an array: nothing', LanguageMapping::fromForm('x', $known, [], [])['mapping'], []);
+
+// 3b. Translation review: off by default, a checkbox per language (also for codes set in
+//     Settings.yaml), Settings.yaml's `review` wins.
+$check('review off by default', LanguageMapping::review('de', [], []), false);
+$check('review stored', LanguageMapping::review('fr', ['fr' => ['review' => true]], []), true);
+$check('review from settings wins', LanguageMapping::review('fr', ['fr' => ['review' => true]], ['fr' => ['review' => false]]), false);
+$check('review from settings on', LanguageMapping::review('it', [], ['it' => ['review' => true]]), true);
+$reviewRows = array_column(LanguageMapping::rows($languages, ['fr' => ['code' => 'fr-CH', 'review' => true]], ['it' => ['code' => 'it-CH', 'review' => true]]), null, 'value');
+$check('row review stored', [$reviewRows['fr']['review'], $reviewRows['fr']['reviewFromSettings']], [true, false]);
+$check('row review from settings', [$reviewRows['it']['review'], $reviewRows['it']['reviewFromSettings']], [true, true]);
+$check('row review off', $reviewRows['de']['review'], false);
+$saved = LanguageMapping::fromForm([
+    'de' => ['code' => 'de-CH', 'review' => '1'],
+    'fr' => ['code' => 'fr-CH', 'review' => ''],           // unticked (Flow's hidden field)
+    'it' => ['code' => 'nl', 'review' => '1'],             // code in Settings.yaml: only review saved
+], $known, ['fr' => ['code' => 'fr-CH', 'review' => true], 'it' => ['code' => 'it-IT', 'politeness' => 'more']], $settings)['mapping'];
+$check('review ticked', $saved['de']['review'], true);
+$check('review unticked', $saved['fr']['review'], false);
+$check('review for a Settings.yaml code, stored code kept', $saved['it'], ['code' => 'it-IT', 'politeness' => 'more', 'review' => true]);
+$check('decode review', LanguageMapping::decode('{"de":{"code":"de-CH","review":true},"fr":{"review":"yes"}}'), ['de' => ['code' => 'de-CH', 'review' => true], 'fr' => []]);
 
 // 4. Combo box options: every target, "Name (code)", localised where intl knows the name.
 $options = LanguageMapping::options('en');
