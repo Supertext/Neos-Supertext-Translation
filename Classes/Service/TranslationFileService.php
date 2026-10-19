@@ -57,6 +57,9 @@ class TranslationFileService
     protected Settings $settings;
 
     #[Flow\Inject]
+    protected LanguageResolver $languageResolver;
+
+    #[Flow\Inject]
     protected NodeLabelGeneratorInterface $nodeLabelGenerator;
 
     /**
@@ -201,7 +204,7 @@ class TranslationFileService
 
     private function files(): FileTransfer
     {
-        return new FileTransfer($this->settings->getLanguageMapping());
+        return new FileTransfer($this->languageResolver->mapping());
     }
 
     private function contentRepository(string $id): ContentRepository

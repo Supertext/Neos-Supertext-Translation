@@ -29,12 +29,11 @@ Neos:
               it:
                 label: 'Italiano'
 
-# Language mapping: every dimension value that isn't a Supertext code itself (en_US is)
-# needs one; nothing is guessed.
+# Language mapping: chosen under Administration → Supertext (the entrypoint's
+# demo:ensurelanguages preselects de-CH, fr-CH and it-CH, formal, on the first start).
+# en_UK is set here to show the Settings.yaml override (read-only in the module); en_US is a
+# Supertext code itself.
 Supertext:
   NeosTranslation:
     languages:
       en_UK: { code: 'en-GB' }
-      de: { code: 'de-CH', politeness: 'more' }
-      fr: { code: 'fr-CH', politeness: 'more' }
-      it: { code: 'it-CH', politeness: 'more' }

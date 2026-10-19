@@ -138,6 +138,86 @@
 				<source>The site has no language {0}.</source>
 				<target state="final">Il sito non ha la lingua {0}.</target>
 			</trans-unit>
+			<trans-unit id="mapping.module.label" xml:space="preserve">
+				<source>Supertext</source>
+				<target state="final">Supertext</target>
+			</trans-unit>
+			<trans-unit id="mapping.module.description" xml:space="preserve">
+				<source>Choose the Supertext language of each language of your sites.</source>
+				<target state="final">Scelga la lingua Supertext di ogni lingua dei Suoi siti.</target>
+			</trans-unit>
+			<trans-unit id="mapping.title" xml:space="preserve">
+				<source>Languages</source>
+				<target state="final">Lingue</target>
+			</trans-unit>
+			<trans-unit id="mapping.hint" xml:space="preserve">
+				<source>Choose which Supertext language each language of your sites is translated into and from. Where the choice is obvious, Supertext's suggestion is preselected (de → German (Germany)); a language without a suggestion can't be translated until you choose one.</source>
+				<target state="final">Scelga in quale lingua Supertext e da quale viene tradotta ogni lingua dei Suoi siti. Dove la scelta è ovvia, il suggerimento di Supertext è preselezionato (de → tedesco (Germania)); una lingua senza suggerimento può essere tradotta solo dopo che ne avrà scelta una.</target>
+			</trans-unit>
+			<trans-unit id="mapping.language" xml:space="preserve">
+				<source>Language</source>
+				<target state="final">Lingua</target>
+			</trans-unit>
+			<trans-unit id="mapping.code" xml:space="preserve">
+				<source>Supertext language</source>
+				<target state="final">Lingua Supertext</target>
+			</trans-unit>
+			<trans-unit id="mapping.politeness" xml:space="preserve">
+				<source>Form of address</source>
+				<target state="final">Forma di cortesia</target>
+			</trans-unit>
+			<trans-unit id="mapping.politeness.default" xml:space="preserve">
+				<source>Default</source>
+				<target state="final">Predefinita</target>
+			</trans-unit>
+			<trans-unit id="mapping.politeness.more" xml:space="preserve">
+				<source>Formal</source>
+				<target state="final">Formale (Lei)</target>
+			</trans-unit>
+			<trans-unit id="mapping.politeness.less" xml:space="preserve">
+				<source>Informal</source>
+				<target state="final">Informale (tu)</target>
+			</trans-unit>
+			<trans-unit id="mapping.choose" xml:space="preserve">
+				<source>— choose —</source>
+				<target state="final">— scegliere —</target>
+			</trans-unit>
+			<trans-unit id="mapping.suggested" xml:space="preserve">
+				<source>Supertext's suggestion</source>
+				<target state="final">Suggerimento di Supertext</target>
+			</trans-unit>
+			<trans-unit id="mapping.none" xml:space="preserve">
+				<source>No suggestion: choose a Supertext language, otherwise this language can't be translated.</source>
+				<target state="final">Nessun suggerimento: scelga una lingua Supertext, altrimenti questa lingua non può essere tradotta.</target>
+			</trans-unit>
+			<trans-unit id="mapping.fromSettings" xml:space="preserve">
+				<source>Set in Settings.yaml (Supertext.NeosTranslation.languages.{0}.code)</source>
+				<target state="final">Impostato in Settings.yaml (Supertext.NeosTranslation.languages.{0}.code)</target>
+			</trans-unit>
+			<trans-unit id="mapping.politenessFromSettings" xml:space="preserve">
+				<source>Set in Settings.yaml (Supertext.NeosTranslation.languages.{0}.politeness)</source>
+				<target state="final">Impostato in Settings.yaml (Supertext.NeosTranslation.languages.{0}.politeness)</target>
+			</trans-unit>
+			<trans-unit id="mapping.save" xml:space="preserve">
+				<source>Save</source>
+				<target state="final">Salva</target>
+			</trans-unit>
+			<trans-unit id="mapping.saved" xml:space="preserve">
+				<source>The languages were saved.</source>
+				<target state="final">Le lingue sono state salvate.</target>
+			</trans-unit>
+			<trans-unit id="mapping.invalid" xml:space="preserve">
+				<source>Not saved: no valid Supertext language chosen for {0}.</source>
+				<target state="final">Non salvato: nessuna lingua Supertext valida scelta per {0}.</target>
+			</trans-unit>
+			<trans-unit id="mapping.noLanguages" xml:space="preserve">
+				<source>Your content repository has no language dimension "{0}" (setting Supertext.NeosTranslation.languageDimension).</source>
+				<target state="final">Il Suo content repository non ha una dimensione di lingua "{0}" (impostazione Supertext.NeosTranslation.languageDimension).</target>
+			</trans-unit>
+			<trans-unit id="mapping.version" xml:space="preserve">
+				<source>Supertext Translation for Neos {0}</source>
+				<target state="final">Supertext Translation for Neos {0}</target>
+			</trans-unit>
 		</body>
 	</file>
 </xliff>

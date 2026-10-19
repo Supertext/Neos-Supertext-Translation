@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Supertext\NeosTranslation\Configuration;
 
 use Neos\Flow\Annotations as Flow;
+use Supertext\NeosTranslation\Service\LanguageMapping;
 
 /**
  * Typed access to Supertext.NeosTranslation settings; environment variables win.
@@ -65,31 +66,22 @@ class Settings
         return is_array($config) ? $config : [];
     }
 
+    /** The `languages` setting as it is (per dimension value: code, politeness, enabled). */
+    public function getLanguages(): mixed
+    {
+        return $this->settings['languages'] ?? [];
+    }
+
     /**
-     * The language mapping: dimension value => Supertext code, from the `code` of each
-     * `languages` entry (blank codes left out). Used for targets and sources alike.
+     * The codes set in Settings.yaml (`languages.<value>.code`, blank ones left out). They
+     * override what is chosen under Administration → Supertext; the mapping in use is
+     * LanguageResolver::mapping().
      *
      * @return array<string, string>
      */
     public function getLanguageMapping(): array
     {
-        return self::mappingFrom($this->settings['languages'] ?? []);
-    }
-
-    /**
-     * @param mixed $languages the `languages` setting
-     * @return array<string, string>
-     */
-    public static function mappingFrom(mixed $languages): array
-    {
-        $mapping = [];
-        foreach (is_array($languages) ? $languages : [] as $dimensionValue => $config) {
-            $code = is_array($config) ? trim((string)($config['code'] ?? '')) : '';
-            if ($code !== '') {
-                $mapping[(string)$dimensionValue] = $code;
-            }
-        }
-        return $mapping;
+        return LanguageMapping::overrides($this->settings['languages'] ?? []);
     }
 
     /** The "Send version information to Supertext" setting; null when not set (default on). */

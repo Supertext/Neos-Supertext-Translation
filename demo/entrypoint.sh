@@ -47,6 +47,7 @@ if ! ./flow site:list | grep -q neosdemo; then
 fi
 
 ./flow demo:ensureaccounts
+./flow demo:ensurelanguages
 ./flow resource:publish
 ./flow flow:cache:warmup
 

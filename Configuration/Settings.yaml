@@ -22,18 +22,20 @@ Supertext:
     # Name of the language dimension in the content repository.
     languageDimension: 'language'
 
-    # Language mapping and per-language settings, keyed by dimension value. Supertext
-    # accepts only its own codes (see docs/INSTALLATION.md -> Supertext language codes):
-    # regional for German, English, French, Italian and Portuguese ("de-CH", "en-US",
-    # "pt-BR"), a script for Chinese and Serbian ("zh-Hans", "sr-Latn"), bare for the
-    # others ("es", "nl"). A dimension value that already is such a code (apart from case
-    # and "_"/"-", e.g. "en_US" or "es") needs no entry; any other ("de", "en_UK") must be
-    # mapped, or translating into or from it stops with "has no Supertext language yet".
-    # Nothing is guessed: whether "de" means Germany or Switzerland is your decision.
+    # Language mapping: which Supertext code each value of the language dimension is
+    # translated with. Normally chosen under Administration → Supertext (one combo box per
+    # language, stored in the persistent cache Supertext_NeosTranslation_State). Entries here
+    # override that choice for the languages they name (for automated setups; the module
+    # shows them read-only). Without either, the Supertext SDK decides: a value that is a
+    # Supertext code apart from case and "_"/"-" ("en_US", "es") is used as it is; a value
+    # with an obvious default gets it ("de" -> "de-DE", "en" -> "en-US", "fr" -> "fr-FR",
+    # "it" -> "it-IT", "pt" -> "pt-PT", "zh" -> "zh-Hans", "es_ES" -> "es"); any other
+    # ("en_UK", "en_IE", "gsw") stops with "has no Supertext language yet" until it is mapped.
+    # See docs/INSTALLATION.md -> Languages.
     #   code:       Supertext code for this language, e.g. "de-CH" (used as source too: "de")
     #   politeness: "more" (formal: Sie/vous), "less" (informal: du/tu) or "default";
     #               only for targets that offer it (supertext:check warns otherwise)
-    #   enabled:    false to never translate into this language
+    #   enabled:    false to never translate into this language (Settings.yaml only)
     languages: []
     #  de:
     #    code: 'de-CH'
@@ -77,6 +79,17 @@ Neos:
             icon: 'fas fa-language'
             mainStylesheet: 'Lite'
             privilegeTarget: 'Supertext.NeosTranslation:Module.TranslationFiles'
+      administration:
+        submodules:
+          # Administration → Supertext: language mapping, one combo box per language
+          # (access: Policy.yaml, Supertext.NeosTranslation:Module.LanguageMapping).
+          supertext:
+            label: 'Supertext.NeosTranslation:Main:mapping.module.label'
+            description: 'Supertext.NeosTranslation:Main:mapping.module.description'
+            controller: 'Supertext\NeosTranslation\Controller\LanguageMappingController'
+            icon: 'fas fa-language'
+            mainStylesheet: 'Lite'
+            privilegeTarget: 'Supertext.NeosTranslation:Module.LanguageMapping'
 
   ContentRepositoryRegistry:
     presets:

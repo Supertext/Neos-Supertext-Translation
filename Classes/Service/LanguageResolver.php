@@ -10,18 +10,32 @@ use Supertext\NeosTranslation\Sdk\V1\Languages;
 
 /**
  * Maps language dimension values ("de", "en_US") to Supertext language codes with the
- * Supertext SDK's rules (the same in every Supertext plugin, defaults only where obvious): the
- * language mapping (`languages.<value>.code`) wins; otherwise a dimension value that
- * equals a Supertext code apart from case and "_"/"-" is used ("en_US" => "en-US",
- * "es"); otherwise the SDK's default ("de" => "de-DE", "es_ES" => "es");
- * anything else ("en_UK", "gsw") throws SupertextException `unsupported_language` before
- * anything is sent. Sources are bare ("en_US" => "en", a mapped "de-CH" => "de").
+ * Supertext SDK's rules (the same in every Supertext plugin): the language mapping wins
+ * (`languages.<value>.code` in Settings.yaml, else the choice under Administration →
+ * Supertext); otherwise a dimension value that equals a Supertext code apart from case and
+ * "_"/"-" is used ("en_US" => "en-US", "es"); otherwise the SDK's default where one is
+ * obvious ("de" => "de-DE", "es_ES" => "es"); anything else ("en_IE", "gsw") throws
+ * SupertextException `unsupported_language` before anything is sent. Sources are bare
+ * ("en_US" => "en", a mapped "de-CH" => "de").
  */
 #[Flow\Scope('singleton')]
 class LanguageResolver
 {
     #[Flow\Inject]
     protected Settings $settings;
+
+    #[Flow\Inject]
+    protected LanguageMappingStore $mappingStore;
+
+    /**
+     * The mapping in use: dimension value => Supertext code (Settings.yaml over the module).
+     *
+     * @return array<string, string>
+     */
+    public function mapping(): array
+    {
+        return LanguageMapping::codes($this->mappingStore->get(), $this->settings->getLanguages());
+    }
 
     /**
      * True when a variant from $source to $target needs translating: the target is
@@ -36,29 +50,31 @@ class LanguageResolver
         return self::primary($source) !== self::primary($target);
     }
 
-    /** Supertext target code: the mapped code, else an exact Supertext code ("en_US" => "en-US"), else the SDK's default ("fr" => "fr-FR"). */
+    /** Supertext target code: the mapped code, else an exact Supertext code ("en_US" => "en-US"), else the default ("de" => "de-DE"). */
     public function targetCode(string $dimensionValue): string
     {
-        return Languages::target($dimensionValue, $this->settings->getLanguageMapping());
+        return Languages::target($dimensionValue, $this->mapping());
     }
 
     /** Supertext source code: the bare language ("en_US" => "en"; a mapped "de-CH" => "de"). */
     public function sourceCode(string $dimensionValue): string
     {
-        return Languages::source($dimensionValue, $this->settings->getLanguageMapping());
+        return Languages::source($dimensionValue, $this->mapping());
     }
 
     /** The target code, or null when the dimension value has no Supertext language (for supertext:check). */
     public function targetCodeOrNull(string $dimensionValue): ?string
     {
-        return self::resolveTarget($dimensionValue, $this->settings->getLanguageMapping());
+        return self::resolveTarget($dimensionValue, $this->mapping());
     }
 
-    /** "more", "less" or "default", as configured (sent as it is: see supertext:check for targets without it) */
+    /**
+     * "more", "less" or "default": Settings.yaml's `politeness` where set, else the choice under
+     * Administration → Supertext (sent as it is: see supertext:check for targets without it).
+     */
     public function politeness(string $dimensionValue): string
     {
-        $politeness = (string)($this->settings->getLanguage($dimensionValue)['politeness'] ?? 'default');
-        return in_array($politeness, ['more', 'less'], true) ? $politeness : 'default';
+        return LanguageMapping::politeness($dimensionValue, $this->mappingStore->get(), $this->settings->getLanguages());
     }
 
     /**

@@ -79,13 +79,18 @@ If the key is wrong, it says *Supertext rejected the API key* (or *No API key is
 
 ## 3. Languages
 
-The package translates whenever a page or content element is created in another value of the **language dimension**. Every dimension value needs a **Supertext language code**: Supertext accepts only its own codes (see *Supertext language codes* below); the package uses a default only where one is obvious.
+The package translates whenever a page or content element is created in another value of the **language dimension**. Every dimension value needs a **Supertext language**: Supertext accepts only its own codes (see *Supertext language codes* below). You choose them in the back end under **Administration → Supertext** (administrators only):
 
-- A dimension value that already **is** a Supertext code, apart from upper/lower case and `_`/`-`, works without setup: `en_US` → `en-US`, `es` → `es`, `de_CH` → `de-CH`.
-- Otherwise the Supertext default, where there is an obvious one: `de` → `de-DE`, `en` → `en-US`, `fr` → `fr-FR`, `it` → `it-IT`, `pt` → `pt-PT`, `zh` → `zh-Hans`, `sr` → `sr-Latn`, `zh_TW` → `zh-Hant`, a region of a bare code → the bare code (`es_ES` → `es`, `nl_NL` → `nl`). Map the value if you want another variant, e.g. `de` → `de-CH`.
-- Any other value must be **mapped** with `languages.<value>.code`, e.g. `en_UK` (Supertext's code is `en-GB`), `en_IE`, `de_LI`, `gsw`. Unmapped, translating into or from that language stops before anything is sent, with *The language en_UK has no Supertext language yet. Ask your administrator to map it (Supertext.NeosTranslation.languages.en_UK.code in Settings.yaml, e.g. 'de-CH').*
+![Administration → Supertext: English (US) with Supertext's suggestion English (United States) (en-US); English (UK) set in Settings.yaml as en-GB, read-only; Deutsch, Français and Italiano set to German, French and Italian (Switzerland) with the formal form of address; Save button and package version below](images/module-languages.png)
 
-The same mapping is used when the language is the source: a mapped `de-CH` is sent as source `de` (sources have no region).
+- One row per value of the language dimension (all content repositories, the source language included: one mapping serves both directions), with its label and value (e.g. *Deutsch (de)*), a combo box with Supertext's languages (*German (Switzerland) (de-CH)*, names in your interface language) and, for the languages that offer one, the **form of address** (*Default*, *Formal*, *Informal*).
+- **Preselected** is Supertext's suggestion where one is obvious: a value that already **is** a Supertext code, apart from upper/lower case and `_`/`-` (`en_US` → `en-US`, `es` → `es`, `de_CH` → `de-CH`), else the default (`de` → `de-DE`, `en` → `en-US`, `fr` → `fr-FR`, `it` → `it-IT`, `pt` → `pt-PT`, `zh` → `zh-Hans`, `sr` → `sr-Latn`, `zh_TW` → `zh-Hant`, a region of a bare code → the bare code: `es_ES` → `es`, `nl_NL` → `nl`). A language nobody chose is translated with that suggestion, so most sites need no setup. Choose another variant where you want one, e.g. `de` → *German (Switzerland)*.
+- A value **without a suggestion** (`en_UK`, `en_IE`, `de_LI`, `gsw`, …) shows *— choose —*. Until you choose, translating into or from that language stops before anything is sent, with *The language en_UK has no Supertext language yet. Ask your administrator to choose one under Administration → Supertext (or to set Supertext.NeosTranslation.languages.en_UK.code in Settings.yaml, e.g. 'de-CH').*
+- **Save** checks every choice against Supertext's list. The choices are stored in the persistent Flow cache `Supertext_NeosTranslation_State` (`Data/Persistent/Cache`, not emptied by `flow:cache:flush`; with several web servers give it a shared backend, see *5. Version information*).
+
+The same mapping is used when the language is the source: `de-CH` is sent as source `de` (sources have no region).
+
+**Override in Settings.yaml** (for automated setups): `languages.<value>.code` and `languages.<value>.politeness` win over the module for the languages they name; the module shows them read-only with the setting's name. `enabled: false` (Settings.yaml only) never translates into a language.
 
 ```yaml
 Supertext:
@@ -94,17 +99,14 @@ Supertext:
       de:
         code: 'de-CH'        # Supertext code (see the list below)
         politeness: 'more'   # more = formal (Sie/vous/Lei), less = informal (du/tu/tu)
-      fr:
-        code: 'fr-CH'
-        politeness: 'more'
       en_UK:
         code: 'en-GB'
         enabled: false       # never translate into this language
 ```
 
-`./flow supertext:check` lists every dimension value with the code it is translated with, and *not mapped* for the ones that still need an entry.
+`./flow supertext:check` lists every dimension value with the code it is translated with, and *not mapped* for the ones that still need a choice.
 
-**Formal or informal tone** (`politeness`) is only offered for some targets: not for `en-GB`, `en-US`, `gsw-u-sd-chbe`, `gsw-u-sd-chzh`, `rm`, `sq`, `sr-Cyrl` and `sr-Latn`. The package sends what you set; for those targets Supertext refuses the translation (*Supertext offers no formal or informal tone for this language. Set it to the default tone (…politeness: 'default').*), and `supertext:check` warns about it beforehand.
+**Form of address** (`politeness`) is only offered for some targets: not for `en-GB`, `en-US`, `gsw-u-sd-chbe`, `gsw-u-sd-chzh`, `rm`, `sq`, `sr-Cyrl` and `sr-Latn`. The module shows it only for the others and stores *Default* otherwise. A tone set in Settings.yaml is sent as it is; for those targets Supertext refuses the translation (*Supertext offers no formal or informal tone for this language. Set it to the default tone (…politeness: 'default').*), and `supertext:check` warns about it beforehand.
 
 ### Supertext language codes
 
@@ -122,7 +124,7 @@ As offered by the Supertext API in October 2026 (the bundled SDK's `Languages::T
 | Swiss German | `gsw-u-sd-chzh` (Zurich), `gsw-u-sd-chbe` (Bern) |
 | All others, without region | `bg`, `cs`, `da`, `el`, `es`, `fi`, `hr`, `hu`, `ja`, `ko`, `nb`, `nl`, `pl`, `rm`, `ru`, `sk`, `sl`, `sq`, `sv`, `tr` |
 
-Sources are bare languages (`en`, `de`, `fr`, …). Regional codes for the other languages (`es-ES`, `sl-SI`, `zh-CN`) are **not** accepted. A code Supertext adds later can be used in the mapping right away: mapped values are sent as they are.
+Sources are bare languages (`en`, `de`, `fr`, …). Regional codes for the other languages (`es-ES`, `sl-SI`, `zh-CN`) are **not** accepted. A code Supertext adds later can be set in Settings.yaml right away (codes there are sent as they are); the module's combo boxes offer the codes of the bundled SDK.
 
 Regional variants of the same language (e.g. `en_US` → `en_UK`) are never translated.
 
@@ -132,13 +134,13 @@ You can check the active configuration in the backend under **Administration ›
 
 ![Configuration module: Neos.ContentRepositoryRegistry language dimension values en_US, de, fr and it](images/configuration-languages.png)
 
-and for this package:
+and for this package (the settings only; choices made under Administration → Supertext aren't settings):
 
-![Configuration module: Supertext.NeosTranslation settings with endpoint https://api.supertext.com/v1/ and language codes de-CH, fr-CH, it-CH, politeness more](images/configuration-supertext.png)
+![Configuration module: Supertext.NeosTranslation settings with endpoint https://api.supertext.com/v1/ and the override languages.en_UK.code en-GB](images/configuration-supertext.png)
 
 ### Interface languages
 
-For translating, editors use Neos' own *Create and copy* dialog, which follows each user's Neos interface language (user menu → *User Settings* → *Interface Language*), English, German, French and Italian included. The package's one screen, **Management → Supertext** (export and import of translation files), comes in the same four languages and follows the same setting (`Resources/Private/Translations/{en,de,fr,it}/Main.xlf`). Text for administrators only, the output of the `supertext:*` CLI commands, the `X-Supertext-Error` response header and log lines, is in English.
+For translating, editors use Neos' own *Create and copy* dialog, which follows each user's Neos interface language (user menu → *User Settings* → *Interface Language*), English, German, French and Italian included. The package's screens, **Management → Supertext** (export and import of translation files) and **Administration → Supertext** (languages), come in the same four languages and follow the same setting (`Resources/Private/Translations/{en,de,fr,it}/Main.xlf`). Text for administrators only, the output of the `supertext:*` CLI commands, the `X-Supertext-Error` response header and log lines, is in English.
 
 
 ## 4. Check it works
@@ -171,7 +173,7 @@ Export for translation and import of translated files (XLIFF 1.2 or HTML, see th
 
 **The ping endpoint** `GET <site URL>/supertext/ping?challenge=…` is public (no login, no session, not cached) and answers only `{"ok":true,"plugin":"Neos-Supertext-Translation","challenge":"…"}`, so Supertext can see that the site is reachable from the internet. It returns nothing else: no versions, no settings, no data. If a page of your site has the path `supertext/ping`, it is hidden by this endpoint.
 
-The state of the reports and the last key check are kept in the persistent Flow cache `Supertext_NeosTranslation_State` (`Data/Persistent/Cache`, not emptied by `flow:cache:flush`). With several web servers, give that cache a shared backend in `Configuration/Caches.yaml` (e.g. `Neos\Cache\Backend\PdoBackend`), or each server reports for itself.
+The state of the reports and the last key check (and the languages chosen under Administration → Supertext) are kept in the persistent Flow cache `Supertext_NeosTranslation_State` (`Data/Persistent/Cache`, not emptied by `flow:cache:flush`). With several web servers, give that cache a shared backend in `Configuration/Caches.yaml` (e.g. `Neos\Cache\Backend\PdoBackend`), or each server reports for itself.
 
 ## All settings
 
@@ -185,8 +187,8 @@ All under `Supertext.NeosTranslation`:
 | `pollInterval` | `2` | Seconds between status checks |
 | `pollTimeout` | `240` | Maximum seconds to wait for one document |
 | `languageDimension` | `language` | Name of the language dimension |
-| `languages.<value>.code` | none: the dimension value if it is a Supertext code | The language mapping: Supertext code for this dimension value (as target; as source without region). Required for values that aren't Supertext codes (`de`, `en_UK`); see *3. Languages* |
-| `languages.<value>.politeness` | `default` | `more` (formal), `less` (informal) or `default`; only for targets that offer a tone |
+| `languages.<value>.code` | none: the choice under Administration → Supertext, else Supertext's suggestion | Overrides the language mapping for this dimension value: Supertext code (as target; as source without region). Shown read-only in the module; see *3. Languages* |
+| `languages.<value>.politeness` | none: the choice under Administration → Supertext, else `default` | Overrides the form of address: `more` (formal), `less` (informal) or `default`; only for targets that offer a tone |
 | `languages.<value>.enabled` | `true` | `false` never translates into that language |
 | `versionReports` | `true` | *Send version information to Supertext*: sends the site URL and the versions of this plugin, Neos and PHP to Supertext after an update and when the API key changes, so Supertext support can see which version you run. No content, no API key and no personal data are sent. `SUPERTEXT_VERSION_REPORTS` (`0`/`1`) wins. See *5. Version information and the API key check* |
 | `editors.plainText` | TextField, TextArea editors | Inspector editors whose string properties are translated as plain text |
@@ -198,6 +200,7 @@ Outside `Supertext.NeosTranslation`:
 | Setting | Default | |
 | --- | --- | --- |
 | `Neos.Neos.modules.management.submodules.supertext.enabled` | `true` | `false` hides the back-end module **Management → Supertext** (export and import of translation files) for everyone; who sees it otherwise is set in `Policy.yaml` (see *Translation files* above) |
+| `Neos.Neos.modules.administration.submodules.supertext.enabled` | `true` | `false` hides the back-end module **Administration → Supertext** (languages); Settings.yaml's `languages` still apply. Access: privilege targets `Supertext.NeosTranslation:Module.LanguageMapping` and `…LanguageMapping.Actions`, granted to `Neos.Neos:Administrator` |
 
 **Per property** (in a NodeTypes YAML file) you can force a property in or out:
 
@@ -240,7 +243,9 @@ Translations already made stay in place; they are ordinary Neos content.
 | `No Supertext API key is set` / *No API key is set yet* | Set `SUPERTEXT_API_KEY` for the web server (e.g. Apache `SetEnv`, container variables) and the CLI, or the `apiKey` setting. No key yet: see *2. Set the API key*. `./flow supertext:check` tests it. |
 | `Supertext rejected the API key` | Wrong or revoked key (the message carries the links to create an account and generate a key). Generate a new one at [supertext.com → Integrations → API](https://www.supertext.com/en/integrations/api) (Admin role) and paste it again; the `Supertext-Auth-Key ` prefix is optional. |
 | `Too many requests` | Supertext's per-second limit; the package retries automatically (up to 4 times). Try again shortly if it persists. |
-| `The language … has no Supertext language yet` | The dimension value isn't a Supertext code and has no mapping. Add `languages.<value>.code` with a code from *Supertext language codes* (e.g. `de-CH`); `supertext:check` lists the unmapped values. |
+| `The language … has no Supertext language yet` | The dimension value has no Supertext suggestion and nobody chose one. Choose it under Administration → Supertext (or set `languages.<value>.code` with a code from *Supertext language codes*, e.g. `de-CH`); `supertext:check` lists the unmapped values. |
+| Administration → Supertext is missing from the menu | Only administrators (`Neos.Neos:Administrator`) see it, unless you granted its privilege targets to another role; or it is disabled (`enabled: false`). |
+| A combo box under Administration → Supertext shows a code as text, not a combo box | The language is set in Settings.yaml (`languages.<value>.code`/`politeness`), which wins; change it there. |
 | `Supertext offers no formal or informal tone for this language` | `politeness` is set for a target without a tone (e.g. `en-GB`, `rm`). Set it to `default` or remove it. |
 | `Supertext does not support this language pair` | The mapped code isn't one Supertext accepts (e.g. `es-ES`, `zh-CN`): use a code from *Supertext language codes*. |
 | `supertext:check`: *Site URL: unknown* | Set `Neos.Flow.http.baseUri` or a primary domain for the site, or open the Neos back end once; until then no version information is sent. |
@@ -257,4 +262,4 @@ Translations already made stay in place; they are ordinary Neos content.
 
 ## Security note
 
-The API key is only read from the environment or the settings and is sent only to the configured endpoint; the version information never contains it (only whether one is set and its check result), and only a SHA-256 fingerprint of it is stored locally. Translation runs with the permissions of the editor who created the page in the new language; the CLI commands (`supertext:translate`, `supertext:import`) run without authorization checks, like other Neos CLI commands. The back-end module Management → Supertext is limited by `Policy.yaml` (editors and administrators), works only in the user's personal workspace and writes imports with that user's permissions; its forms carry Flow's CSRF token, and uploads are read in memory, never stored. Imported files are treated as untrusted (size limit, no DTDs, markup only from the current source, see the developer guide).
+The API key is only read from the environment or the settings and is sent only to the configured endpoint; the version information never contains it (only whether one is set and its check result), and only a SHA-256 fingerprint of it is stored locally. Translation runs with the permissions of the editor who created the page in the new language; the CLI commands (`supertext:translate`, `supertext:import`) run without authorization checks, like other Neos CLI commands. The back-end module Administration → Supertext (languages) is for administrators only (`Policy.yaml`); its form carries Flow's CSRF token and saves only Supertext's own codes. The back-end module Management → Supertext is limited by `Policy.yaml` (editors and administrators), works only in the user's personal workspace and writes imports with that user's permissions; its forms carry Flow's CSRF token, and uploads are read in memory, never stored. Imported files are treated as untrusted (size limit, no DTDs, markup only from the current source, see the developer guide).

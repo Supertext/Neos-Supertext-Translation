@@ -8,6 +8,7 @@ use Neos\Flow\Annotations as Flow;
 use Neos\Flow\Cli\CommandController;
 use Neos\Flow\Persistence\PersistenceManagerInterface;
 use Neos\Neos\Domain\Service\UserService;
+use Supertext\NeosTranslation\Service\LanguageMappingStore;
 
 /**
  * Supertext demo setup
@@ -19,6 +20,29 @@ class DemoCommandController extends CommandController
 
     #[Flow\Inject]
     protected PersistenceManagerInterface $persistenceManager;
+
+    #[Flow\Inject]
+    protected LanguageMappingStore $languageMappingStore;
+
+    /**
+     * Choose the demo's Supertext languages under Administration → Supertext if nobody has yet
+     *
+     * Swiss variants with the formal address for German, French and Italian. Once anything is
+     * stored (e.g. changed in the module), it is left as it is.
+     */
+    public function ensureLanguagesCommand(): void
+    {
+        if ($this->languageMappingStore->get() !== []) {
+            $this->outputLine('Supertext languages: already chosen, left as they are.');
+            return;
+        }
+        $this->languageMappingStore->save([
+            'de' => ['code' => 'de-CH', 'politeness' => 'more'],
+            'fr' => ['code' => 'fr-CH', 'politeness' => 'more'],
+            'it' => ['code' => 'it-CH', 'politeness' => 'more'],
+        ]);
+        $this->outputLine('Supertext languages: de → de-CH, fr → fr-CH, it → it-CH (formal).');
+    }
 
     /**
      * Create the demo accounts from DEMO_ADMIN_* / DEMO_EDITOR_* if they don't exist

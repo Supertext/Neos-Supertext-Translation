@@ -1,16 +1,23 @@
 # Management → Supertext (Export for translation / Import translation). Editors and
 # administrators (who inherit Neos.Neos:Editor) get it; to give it to other roles, grant
 # both privilege targets in your own Policy.yaml.
+# Administration → Supertext (language mapping): administrators only.
 privilegeTargets:
   'Neos\Neos\Security\Authorization\Privilege\ModulePrivilege':
     'Supertext.NeosTranslation:Module.TranslationFiles':
       label: 'Supertext: export pages for translation and import translated files'
       matcher: 'management/supertext'
+    'Supertext.NeosTranslation:Module.LanguageMapping':
+      label: 'Supertext: choose the Supertext language of each language'
+      matcher: 'administration/supertext'
 
   'Neos\Flow\Security\Authorization\Privilege\Method\MethodPrivilege':
     'Supertext.NeosTranslation:Module.TranslationFiles.Actions':
       label: 'Supertext: actions of the translation files module'
       matcher: 'method(Supertext\NeosTranslation\Controller\TranslationFilesController->(index|export|import)Action())'
+    'Supertext.NeosTranslation:Module.LanguageMapping.Actions':
+      label: 'Supertext: actions of the language mapping module'
+      matcher: 'method(Supertext\NeosTranslation\Controller\LanguageMappingController->(index|save)Action())'
 
 roles:
   'Neos.Neos:Editor':
@@ -20,4 +27,12 @@ roles:
         permission: GRANT
       -
         privilegeTarget: 'Supertext.NeosTranslation:Module.TranslationFiles.Actions'
+        permission: GRANT
+  'Neos.Neos:Administrator':
+    privileges:
+      -
+        privilegeTarget: 'Supertext.NeosTranslation:Module.LanguageMapping'
+        permission: GRANT
+      -
+        privilegeTarget: 'Supertext.NeosTranslation:Module.LanguageMapping.Actions'
         permission: GRANT

@@ -76,9 +76,10 @@ foreach (glob("$root/Resources/Private/{Templates,Partials}/*/*.html", GLOB_BRAC
     preg_match_all("/id: '([a-zA-Z0-9_.]+)'/", (string)file_get_contents($template), $m);
     array_push($used, ...$m[1]);
 }
-$controller = (string)file_get_contents("$root/Classes/Controller/TranslationFilesController.php");
-preg_match_all("/translate\\('([a-zA-Z0-9_.]+)'/", $controller, $m);
-array_push($used, ...$m[1]);
+foreach (glob("$root/Classes/Controller/*.php") ?: [] as $controller) {
+    preg_match_all("/translate\\('([a-zA-Z0-9_.]+)'/", (string)file_get_contents($controller), $m);
+    array_push($used, ...$m[1]);
+}
 // Built as 'summary.' . $key in the controller.
 foreach (['ok', 'changed', 'untranslated', 'invalid', 'missing'] as $key) {
     $used[] = 'summary.' . $key;

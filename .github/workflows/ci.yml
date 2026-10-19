@@ -31,6 +31,8 @@ jobs:
         run: php Tests/ReportingTest.php
       - name: Translation files test
         run: php Tests/FileTransferTest.php
+      - name: Language mapping test
+        run: php Tests/LanguageMappingTest.php
       - name: Interface strings test (en, de, fr, it)
         run: php Tests/InterfaceStringsTest.php
       - name: Demo entrypoint syntax

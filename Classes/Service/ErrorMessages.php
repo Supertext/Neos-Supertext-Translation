@@ -36,7 +36,7 @@ final class ErrorMessages
             case SupertextException::UNSUPPORTED_LANGUAGE:
                 $language = $error->targetLang ?? $error->sourceLang ?? '?';
                 return sprintf(
-                    'The language %s has no Supertext language yet. Ask your administrator to map it (Supertext.NeosTranslation.languages.%s.code in Settings.yaml, e.g. \'de-CH\').',
+                    'The language %s has no Supertext language yet. Ask your administrator to choose one under Administration → Supertext (or to set Supertext.NeosTranslation.languages.%s.code in Settings.yaml, e.g. \'de-CH\').',
                     $language,
                     $language,
                 );

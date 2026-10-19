@@ -52,7 +52,7 @@ After publishing, the page is live in the new language:
 
 ## Formal and informal language
 
-Your administrator decides per language whether Supertext writes formally (*Sie*, *vous*, *Lei*) or informally (*du*, *tu*). On the Supertext demo, German, French and Italian are formal.
+Your administrator decides per language (under **Administration → Supertext**) which variant Supertext translates into, e.g. Swiss or German German, and whether it writes formally (*Sie*, *vous*, *Lei*) or informally (*du*, *tu*). On the Supertext demo, German, French and Italian are formal.
 
 ## When something goes wrong
 

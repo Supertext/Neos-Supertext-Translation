@@ -21,7 +21,7 @@ spl_autoload_register(static function (string $class): void {
     }
 });
 require_once __DIR__ . '/../Classes/Api/GuzzleHttpTransport.php';
-require_once __DIR__ . '/../Classes/Configuration/Settings.php';
+require_once __DIR__ . '/../Classes/Service/LanguageMapping.php';
 require_once __DIR__ . '/../Classes/Service/LanguageResolver.php';
 require_once __DIR__ . '/../Classes/Service/ErrorMessages.php';
 
@@ -30,12 +30,12 @@ use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Middleware;
 use GuzzleHttp\Psr7\Response;
 use Supertext\NeosTranslation\Api\GuzzleHttpTransport;
-use Supertext\NeosTranslation\Configuration\Settings;
 use Supertext\NeosTranslation\Sdk\V1\Client;
 use Supertext\NeosTranslation\Sdk\V1\Languages;
 use Supertext\NeosTranslation\Sdk\V1\Segment;
 use Supertext\NeosTranslation\Sdk\V1\SupertextException;
 use Supertext\NeosTranslation\Service\ErrorMessages;
+use Supertext\NeosTranslation\Service\LanguageMapping;
 use Supertext\NeosTranslation\Service\LanguageResolver;
 
 $failures = [];
@@ -48,7 +48,7 @@ $check = static function (string $name, mixed $actual, mixed $expected) use (&$f
 // 1. Neos language dimension values, as LanguageResolver hands them to the SDK: the
 //    mapping (languages.<value>.code) wins, else an exact Supertext code, else the SDK's
 //    default where one is obvious (SDK 0.4.0), else nothing is sent.
-$mapping = Settings::mappingFrom([
+$mapping = LanguageMapping::overrides([
     'de' => ['code' => 'de-CH', 'politeness' => 'more'],
     'en_UK' => ['code' => 'en-GB'],
     'fr' => ['politeness' => 'more'],           // no code: not part of the mapping
@@ -71,7 +71,7 @@ try {
 } catch (SupertextException $e) {
     $check('unmapped gsw: error code', $e->errorCode, 'unsupported_language');
     $check('unmapped gsw: message names the setting', ErrorMessages::forException($e),
-        "The language gsw has no Supertext language yet. Ask your administrator to map it (Supertext.NeosTranslation.languages.gsw.code in Settings.yaml, e.g. 'de-CH').");
+        "The language gsw has no Supertext language yet. Ask your administrator to choose one under Administration → Supertext (or to set Supertext.NeosTranslation.languages.gsw.code in Settings.yaml, e.g. 'de-CH').");
 }
 $check('politeness unsupported for en-US', LanguageResolver::politenessUnsupported('en-US', 'more'), true);
 $check('politeness supported for de-CH', LanguageResolver::politenessUnsupported('de-CH', 'more'), false);

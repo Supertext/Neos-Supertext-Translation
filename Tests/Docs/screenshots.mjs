@@ -11,7 +11,8 @@
  *
  * The demo must not have Italian content yet (fresh database), because the flow
  * creates "Text & images" in Italian. ONLY=files takes just the Management → Supertext
- * screenshots (export, import result), which work on any state of the demo.
+ * screenshots (export, import result), ONLY=languages just Administration → Supertext; both
+ * work on any state of the demo.
  */
 import { chromium } from 'playwright';
 import { readFileSync } from 'node:fs';
@@ -81,8 +82,24 @@ async function translationFiles(page) {
   await shot(page, 'module-import-result', pad(await page.locator('.supertext-files-result').boundingBox(), 12));
 }
 
+// --- Installation guide: Administration → Supertext (admin) -----------------
+// The language mapping as the demo sets it up: de/fr/it chosen (formal), en_UK from
+// Settings.yaml (read-only), en_US preselected as Supertext's suggestion.
+async function languages(admin) {
+  await admin.goto(`${B}/neos/administration/supertext`);
+  await admin.locator('#supertext-mapping').waitFor();
+  await admin.waitForTimeout(300);
+  await shot(admin, 'module-languages', pad(await admin.locator('.supertext-mapping').boundingBox(), 12));
+}
+
 if (process.env.ONLY === 'files') {
   await translationFiles(await login(EDITOR));
+  await browser.close();
+  console.log(`Screenshots written to ${OUT}`);
+  process.exit(0);
+}
+if (process.env.ONLY === 'languages') {
+  await languages(await login(ADMIN));
   await browser.close();
   console.log(`Screenshots written to ${OUT}`);
   process.exit(0);
@@ -171,7 +188,8 @@ async function configuration(path, name, expand = []) {
   const box = await node.boundingBox();
   await shot(admin, name, pad({ x: box.x, y: box.y, width: Math.min(1000, box.width), height: Math.min(700, box.height) }, 12));
 }
-await configuration('Supertext.NeosTranslation', 'configuration-supertext', ['languages', 'languages.de', 'languages.fr', 'languages.it']);
+await languages(admin);
+await configuration('Supertext.NeosTranslation', 'configuration-supertext', ['languages', 'languages.en_UK']);
 await configuration('Neos.ContentRepositoryRegistry.contentRepositories.default.contentDimensions.language.values', 'configuration-languages', ['fr', 'it']);
 
 await browser.close();
