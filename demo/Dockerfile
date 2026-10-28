@@ -1,10 +1,10 @@
-# Supertext Neos demo: Neos 9.1 + Neos.Demo (EN/DE, plus empty FR and IT) + this package.
+# Supertext Neos demo: Neos 9.2 + Neos.Demo (EN/DE, plus empty FR and IT) + this package.
 # Build context is the repository root:
 #   docker build -f demo/Dockerfile -t supertext-neos-demo .
 # Needs a MariaDB/MySQL database (DB_* variables) and a volume at /data for uploads.
 # See docs/DEVELOPER.md -> Demo.
 
-FROM php:8.3-apache
+FROM php:8.4-apache
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \

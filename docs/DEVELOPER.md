@@ -170,7 +170,7 @@ php Tests/SdkTest.php            # Guzzle transport + bundled SDK round trip (mo
                                  # needs Guzzle from vendor/ or demo/Packages/Libraries (composer install --working-dir=demo)
 ```
 
-CI (`.github/workflows/ci.yml`) lints all PHP files on 8.2, 8.3 and 8.4, runs the version, reporting, translation file, language mapping and interface strings tests and syntax-checks the demo entrypoint on every push and pull request; the *PHPStan* job installs the demo's locked Neos, runs `Tests/SdkTest.php` and PHPStan (see *Code quality and security checks*).
+CI (`.github/workflows/ci.yml`) lints all PHP files on 8.2, 8.3, 8.4 and 8.5, runs the version, reporting, translation file, language mapping and interface strings tests and syntax-checks the demo entrypoint on every push and pull request; the *PHPStan* job installs the demo's locked Neos (on PHP 8.4, which Neos 9.2 needs), runs `Tests/SdkTest.php` and PHPStan (see *Code quality and security checks*).
 
 End to end (manual, before a release): fresh demo, stand-in with `STAND_IN_PREFIX=1`, then (a) `supertext:translate` into French and (b) *Create and copy* into Italian in the UI as the editor; every visible text must be translated, the workspace must show the changes, and publishing must work. `Tests/Docs/screenshots.mjs` runs (b) automatically.
 
@@ -193,16 +193,16 @@ When the flow touches new texts, run the stand-in with `STAND_IN_DUMP=<dir>`: it
 
 ## Demo (Railway)
 
-The public demo is a container built from `demo/Dockerfile`: Neos 9.1 with the official **Neos.Demo** site (English, with English UK as a variant, and German) plus **French and Italian, empty**, as Supertext targets, and this package installed from the repo itself. It runs on Railway in the `supertext-cms-demos` project (service `neos`, region EU West / Amsterdam) next to a `MySQL` service (Railway's MySQL 9 template, moved to Amsterdam, InnoDB buffer pool lowered to 256 MB in its start command): <https://neos-production-7b3c.up.railway.app/> (backend: `/neos`). Italian and French URLs (`/it`, `/fr`) return 404 until an editor has translated the first page into that language.
+The public demo is a container built from `demo/Dockerfile`: Neos 9.2 with the official **Neos.Demo** site (English, with English UK as a variant, and German) plus **French and Italian, empty**, as Supertext targets, and this package installed from the repo itself. It runs on Railway in the `supertext-cms-demos` project (service `neos`, region EU West / Amsterdam) next to a `MySQL` service (Railway's MySQL 9 template, moved to Amsterdam, InnoDB buffer pool lowered to 256 MB in its start command): <https://neos-production-7b3c.up.railway.app/> (backend: `/neos`). Italian and French URLs (`/it`, `/fr`) return 404 until an editor has translated the first page into that language.
 
 **Deploys:** Railway watches `main` and rebuilds on every push.
 
 | File | Purpose |
 | --- | --- |
-| `Dockerfile` | `php:8.3-apache` + extensions (`pdo_mysql`, `intl`, `gd`, …), `composer install` from the lock file; the package is copied to `DistributionPackages/Supertext.NeosTranslation` |
+| `Dockerfile` | `php:8.4-apache` + extensions (`pdo_mysql`, `intl`, `gd`, …), `composer install` from the lock file; the package is copied to `DistributionPackages/Supertext.NeosTranslation` |
 | `composer.json`, `composer.lock` | The demo project (Neos, Neos.Demo, both Supertext packages via a path repository). Keeps Flow's installer scripts — without them there is no `./flow` and no `Web/index.php`. |
 | `DistributionPackages/Supertext.NeosDemo` | Demo site package: French/Italian dimension values and URL segments, `en_UK` → `en-GB` in Settings.yaml (shows the override; `en_US` needs none), trusted proxies, the root-node migration, `demo:ensureaccounts` and `demo:ensurelanguages` (chooses `de-CH`/`fr-CH`/`it-CH`, formal, under Administration → Supertext while nothing is chosen there yet) |
-| `Settings.yaml` | Database connection from `DB_*` |
+| `Settings.yaml` | Database connection from `DB_*`; `subRequestPhpIniPathAndFilename: false` (the PHP image has no php.ini, and Flow 9.2 refuses sub-requests without one) |
 | `entrypoint.sh` | Keeps only Apache's prefork MPM, links `Data/Persistent` to the volume, waits for the database, runs `doctrine:migrate` + `cr:setup`; on first boot imports Neos.Demo and runs the root-node migration; every boot: `demo:ensureaccounts`, `resource:publish`, `flow:cache:warmup` |
 | `apache.conf`, `php.ini` | Web server and PHP settings |
 | `.env.example` | All variables |
@@ -283,6 +283,6 @@ Translating hooks into the content repository, so editors see Neos' own dialogs 
 - Only `string` properties are translated; value objects (e.g. structured link or list editors) are not.
 - Management → Supertext exports one page (with its content) per file and only from the site's default language; subpages, several pages at once and another source language are CLI-only for now (`supertext:export` per node, `--source`).
 - Human (professional) translation orders are not supported yet (the WordPress plugin has them).
-- Tested on Neos 9.1 with the stand-in API; not yet against the live API.
+- Tested on Neos 9.1 and 9.2 with the stand-in API; not yet against the live API.
 - Version reports run inside the back-end request (no after-response hook in Flow middlewares); a job queue would move them out.
 - The combo boxes of Administration → Supertext offer the codes of the bundled SDK (`Languages::TARGETS`), not the live `GET features` list; a code Supertext adds later can be set in Settings.yaml until the SDK is updated.

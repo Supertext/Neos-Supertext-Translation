@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Tested on Neos 9.2 (PHP 8.4) next to 9.1. Demo: Neos 9.1.10 → 9.2.0 (Flow 9.2.2, Neos UI and Neos.Demo 9.2.0) on PHP 8.4; the CI *PHPStan* job now runs on PHP 8.4 against it.
 - Added: PHP 8.5 in the CI test matrix (the package already allows PHP 8.2 and newer). Demo: Neos SEO 4.3.0 and current Guzzle/Symfony patch releases.
 
 - New: **Translation review** per language (Administration → Supertext → tick *Translation review* in the language's row, or `languages.<value>.review: true` in Settings.yaml): translations into that language go through Supertext's review service (Supertext Localization Review), where customers and Supertext linguists correct them on the website with a Chrome extension; corrections come back into Neos with the next translation, and texts translated before keep their (reviewed) wording. Same API key, billing, languages and messages; other languages keep going directly to Supertext. New setting `reviewUrl` (`SUPERTEXT_REVIEW_URL`; defaults to Supertext's review service, `''` turns review off everywhere). Off for every language after the update. `supertext:check` shows the review service and the languages that use it. All four interface languages.

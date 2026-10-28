@@ -10,3 +10,8 @@ Neos:
         dbname: '%env:DB_NAME%'
         user: '%env:DB_USER%'
         password: '%env:DB_PASSWORD%'
+    core:
+      # The PHP image has no php.ini; since Flow 9.2 sub-requests (./flow
+      # commands started by Flow) fail with "Could not resolve ini file" unless
+      # they are told not to pass one.
+      subRequestPhpIniPathAndFilename: false

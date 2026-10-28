@@ -2,13 +2,13 @@
 
 For administrators setting up the package on a Neos site.
 
-> **Just want to try it?** `demo/` contains a ready-to-run container with Neos 9.1, the Neos demo site in English and German plus empty French and Italian, and this package installed. It also runs the public Supertext demo. See the *Demo* section of the [developer guide](DEVELOPER.md#demo-railway).
+> **Just want to try it?** `demo/` contains a ready-to-run container with Neos 9.2, the Neos demo site in English and German plus empty French and Italian, and this package installed. It also runs the public Supertext demo. See the *Demo* section of the [developer guide](DEVELOPER.md#demo-railway).
 
 ## Requirements
 
 | | |
 | --- | --- |
-| Neos | 9.0 or newer (developed and tested on 9.1) |
+| Neos | 9.0 or newer (tested on 9.1 and 9.2; Neos 9.2 needs PHP 8.4) |
 | PHP | 8.2 or newer, with `ext-dom` |
 | Content dimensions | A language dimension (named `language` by default) |
 | Supertext | An account ([create one or log in](https://www.supertext.com/person/en/account/signin)) with an API key ([supertext.com → Integrations → API](https://www.supertext.com/en/integrations/api), requires the Admin role) |

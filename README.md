@@ -2,7 +2,7 @@
 
 Translates pages and content with **Supertext AI** the moment an editor creates them in another language in Neos — via the language menu's *Create and copy* (or *Create empty*) dialog, or the `supertext:translate` command. No new workflow: editors keep using Neos' own content dimensions.
 
-Works with Neos 9.0+ (tested on 9.1), PHP 8.2+.
+Works with Neos 9.0+ (tested on 9.1 and 9.2), PHP 8.2+.
 
 ![The Neos backend showing a page translated into Italian by Supertext](docs/images/translated-page.png)
 
@@ -52,7 +52,7 @@ Translation outside Neos (translation tools, translators, Supertext's web app): 
 
 ## Demo
 
-`demo/` builds a container with Neos 9.1, the Neos demo site (English, German) plus empty French and Italian, and this package. It's deployed to Railway on every push to `main` — details in the [developer guide](docs/DEVELOPER.md#demo-railway).
+`demo/` builds a container with Neos 9.2, the Neos demo site (English, German) plus empty French and Italian, and this package. It's deployed to Railway on every push to `main` — details in the [developer guide](docs/DEVELOPER.md#demo-railway).
 
 ## Roadmap
 
